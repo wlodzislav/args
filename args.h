@@ -9,11 +9,11 @@
 #ifndef ARGS_H
 #define ARGS_H
 
+#include <type_traits>
 #include <sstream>
 #include <functional>
 #include <algorithm>
 #include <vector>
-#include <list>
 #include <string>
 #include <map>
 #include <stdexcept>
@@ -51,8 +51,15 @@ namespace {
 		return opt[0] == '-' && opt[1] == '-' && opt.length() > 2 && has_eq;
 	}
 
-	template<typename Type>
-	void parse_value(std::string value, Type* destination) {
+	template<typename T, typename = void>
+		struct is_stringstreamable: std::false_type {};
+
+	template<typename T>
+		struct is_stringstreamable<T, std::void_t<decltype(std::declval<std::istringstream&>() >> std::declval<T&>())>> : std::true_type {};
+
+	template<typename T>
+	std::enable_if_t<is_stringstreamable<T>::value>
+	parse_value(std::string value, T* destination) {
 		if (!value.empty()) {
 			std::stringstream stream(value);
 			stream >> *destination;
@@ -79,21 +86,15 @@ namespace {
 		}
 	}
 
-	template<typename C>
-	void parse_value(std::string value, std::vector<C>* destination) {
+	template<typename T>
+	std::enable_if_t<!is_stringstreamable<T>::value
+		&& is_stringstreamable<typename T::value_type>::value
+		&& std::is_void<decltype(std::declval<T>().push_back(std::declval<typename T::value_type>()))>::value
+	>
+	parse_value(std::string value, T* destination) {
 		if (!value.empty()) {
 			std::stringstream stream(value);
-			C c;
-			stream >> c;
-			destination->push_back(c);
-		}
-	}
-
-	template<typename C>
-	void parse_value(std::string value, std::list<C>* destination) {
-		if (!value.empty()) {
-			std::stringstream stream(value);
-			C c;
+			typename T::value_type c;
 			stream >> c;
 			destination->push_back(c);
 		}
