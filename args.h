@@ -114,12 +114,10 @@ namespace args {
 			if (value == "1" || value == "true" ||
 				value == "on" || value == "yes") {
 				*destination = true;
-			}
-			else if (value == "0" || value == "false" ||
+			} else if (value == "0" || value == "false" ||
 				value == "off" || value == "no") {
 				*destination = false;
-			}
-			else {
+			} else {
 				throw std::invalid_argument(
 					std::string("Invalid command line option. Value \"") +
 					value + '"' + R"( is not one of "1", "0", "true", "false", "on", "off", "yes", "no".)");
@@ -135,7 +133,7 @@ namespace args {
 
 	void parse(int argc, const char** argv, const std::initializer_list<args::option>& options) {
 		std::vector<option> options_vec;
-		for( auto&& e : options ) {
+		for (auto&& e : options) {
 			options_vec.push_back(e);
 		}
 		parse(argc, argv, options_vec);
@@ -144,15 +142,15 @@ namespace args {
 	template<typename Allocator>
 	void parse(int argc, const char** argv, const std::vector<args::option, Allocator>& options) {
 		std::map<std::string, std::function<void (const char*)>> global_options;
-		for( auto&& option : options ) {
-			if( !option.short_name.empty() ) {
+		for (auto&& option : options) {
+			if (!option.short_name.empty()) {
 				global_options[option.short_name] = option.parse;
 			}
-			if( !option.long_name.empty() ) {
+			if (!option.long_name.empty()) {
 				global_options[option.long_name] = option.parse;
 			}
 		}
-		for( const char** arg = argv + 1; arg < argv + argc; ++arg ) {
+		for (const char** arg = argv + 1; arg < argv + argc; ++arg) {
 			bool short_option = is_short_option(*arg);
 			bool short_option_width_eq_sign_value = is_short_option_width_eq_sign_value(*arg);
 			bool short_grouped_or_with_value = is_short_grouped_or_with_value(*arg);
@@ -162,27 +160,23 @@ namespace args {
 			std::string option;
 			std::string value;
 			//INSPECT(*arg);
-			if( short_option ) {
+			if (short_option) {
 				option = std::string(*arg);
 				auto&& next = std::next(arg);
-				if( next != argv + argc && !is_option(*next) ) {
+				if (next != argv + argc && !is_option(*next)) {
 					value = std::string(*next);
 					++arg;
 				}
-			}
-			else if( short_option_width_eq_sign_value ) {
+			} else if (short_option_width_eq_sign_value) {
 				option = std::string(*arg, 2);
 				value = std::string(*arg + 3);
-			}
-			else if( short_grouped_or_with_value ) {
-				if( short_grouped ) {
-				}
-				else {
+			} else if (short_grouped_or_with_value) {
+				if (short_grouped) {
+				} else {
 					option = std::string(*arg, 2);
 					value = std::string(*arg + 2);
 				}
-			}
-			else if( long_option ) {
+			} else if (long_option) {
 				option = std::string(*arg);
 				auto&& next = std::next(arg);
 				if( next != argv + argc && !is_option(*next) ) {
@@ -190,17 +184,16 @@ namespace args {
 					++arg;
 				}
 			}
-			else if( long_option_width_eq_sign_value ) {
+			else if (long_option_width_eq_sign_value) {
 				std::string::size_type eq_pos = std::string(*arg).find("=");
 				option = std::string(*arg, eq_pos);
 				value = std::string(*arg + eq_pos + 1);
 			}
 
 			auto&& it = global_options.find(option);
-			if( it != global_options.end() ) {
+			if(it != global_options.end()) {
 				it->second(value.c_str());
-			}
-			else {
+			} else {
 				throw std::invalid_argument(
 						std::string("Invalid command line option \"") + *arg + "\".");
 			}
