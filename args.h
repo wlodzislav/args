@@ -97,14 +97,14 @@ namespace args {
 
 	template<typename Type>
 	option::option(const char* name, Type* destination)
-		: short_name(is_short_option(name)?name:""),
-		long_name(is_long_option(name)?name:""),
+		: short_name(is_short_option(name) ? name : ""),
+		long_name(is_long_option(name) ? name : ""),
 		parse([=](const char* value) { parse_value(value, destination);}) {}
 
 	template<typename Type>
 	option::option(const char* short_name, const char* long_name, Type* destination)
-		: short_name(is_short_option(short_name)?short_name:""),
-		long_name(is_long_option(long_name)?long_name:""),
+		: short_name(is_short_option(short_name) ? short_name : ""),
+		long_name(is_long_option(long_name) ? long_name : ""),
 		parse([=](const char* value) { parse_value(value, destination);}) {}
 
 	template<>
@@ -141,6 +141,8 @@ namespace args {
 		for (const char** arg = argv + 1; arg < argv + argc; ++arg) {
 			std::string option;
 			std::string value;
+			auto str_arg = std::string{*arg};
+			auto is_short_grouped = false;
 			//INSPECT(*arg);
 			if (is_short_option(*arg)) {
 				option = std::string(*arg);
@@ -153,7 +155,11 @@ namespace args {
 				option = std::string(*arg, 2);
 				value = std::string(*arg + 3);
 			} else if (is_short_grouped_or_with_value(*arg)) {
-				if (is_short_grouped(*arg)) {
+				auto str_arg = std::string{*arg};
+				is_short_grouped = std::all_of(str_arg.begin() + 1, str_arg.end(), [&](auto c) -> bool {
+					return global_options.find(std::string("-") + c) != global_options.end();
+				});
+				if (is_short_grouped) {
 				} else {
 					option = std::string(*arg, 2);
 					value = std::string(*arg + 2);
@@ -172,12 +178,19 @@ namespace args {
 				value = std::string(*arg + eq_pos + 1);
 			}
 
-			auto&& it = global_options.find(option);
-			if(it != global_options.end()) {
-				it->second(value.c_str());
+			if (is_short_grouped) {
+				std::for_each(str_arg.begin() + 1, str_arg.end(), [&](auto c) {
+					auto option = std::string("-") + c;
+					auto&& it = global_options.find(option);
+					it->second(value.c_str());
+				});
 			} else {
-				throw std::invalid_argument(
-						std::string("Invalid command line option \"") + *arg + "\".");
+				auto&& it = global_options.find(option);
+				if(it != global_options.end()) {
+					it->second(value.c_str());
+				} else {
+					throw std::invalid_argument(std::string("Invalid command line option \"") + *arg + "\".");
+				}
 			}
 		}
 	}
