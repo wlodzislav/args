@@ -89,14 +89,17 @@ namespace {
 	template<typename T>
 	std::enable_if_t<!is_stringstreamable<T>::value
 		&& is_stringstreamable<typename T::value_type>::value
-		&& std::is_void<decltype(std::declval<T>().push_back(std::declval<typename T::value_type>()))>::value
+		&& std::is_same<
+			decltype(std::declval<T>().insert(std::declval<T>().end(), std::declval<typename T::value_type>())),
+			typename T::iterator
+		>::value
 	>
 	parse_value(std::string value, T* destination) {
 		if (!value.empty()) {
 			std::stringstream stream(value);
 			typename T::value_type c;
 			stream >> c;
-			destination->push_back(c);
+			destination->insert(destination->end(), c);
 		}
 	}
 }

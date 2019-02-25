@@ -1,25 +1,14 @@
+#include <iostream>
 #include <vector>
 #include <list>
-#include <iterator>
-#include <iostream>
+#include <set>
+#include <unordered_set>
 
 #include "../args.h"
 
 template<typename T>
-std::ostream& operator<<(std::ostream &ss, const std::vector<T>& v) {
-	ss << "[";
-	for (auto item = std::begin(v); item != std::end(v); item++) {
-		if (item != std::begin(v)) {
-			ss << ", ";
-		}
-		ss << *item;
-	}
-	ss << "]";
-	return ss;
-}
-
-template<typename T>
-std::ostream& operator<<(std::ostream &ss, const std::list<T>& v) {
+std::enable_if_t<!std::is_convertible<T, std::string>::value, std::ostream&>
+operator<<(std::ostream &ss, const T& v) {
 	ss << "[";
 	for (auto item = std::begin(v); item != std::end(v); item++) {
 		if (item != std::begin(v)) {
@@ -514,6 +503,50 @@ int main() {
 			args::parse(argc, argv, options);
 
 			std::list expected = {0, 1, 2};
+			ctl::expect_equal(actual, expected);
+		});
+
+		it("std::set", []{
+			const char* argv[] = {
+				"exec",
+				"-v",
+				"0",
+				"-v",
+				"1",
+				"-v",
+				"2"
+			};
+			std::set<int> actual = {};
+			std::vector<args::option> options = {
+				{"-v", &actual}
+			};
+
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+			args::parse(argc, argv, options);
+
+			std::set expected = {0, 1, 2};
+			ctl::expect_equal(actual, expected);
+		});
+
+		it("std::unordered_set", []{
+			const char* argv[] = {
+				"exec",
+				"-v",
+				"0",
+				"-v",
+				"1",
+				"-v",
+				"2"
+			};
+			std::unordered_set<int> actual = {};
+			std::vector<args::option> options = {
+				{"-v", &actual}
+			};
+
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+			args::parse(argc, argv, options);
+
+			std::unordered_set expected = {0, 1, 2};
 			ctl::expect_equal(actual, expected);
 		});
 	});
