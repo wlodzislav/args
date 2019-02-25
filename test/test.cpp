@@ -105,6 +105,25 @@ int main() {
 			ctl::expect_ok(s);
 		});
 
+		it("grouped short flags, -rf", []{
+			const char* argv[] = {
+				"exec",
+				"-rf"
+			};
+			bool r = false;
+			bool f = false;
+			std::vector<args::option> options = {
+				{"-r", &r},
+				{"-f", &f}
+			};
+
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+			args::parse(argc, argv, options);
+
+			ctl::expect_ok(r);
+			ctl::expect_ok(f);
+		});
+
 		it("short without space, -s1", []{
 			const char* argv[] = {
 				"./exec",
@@ -352,16 +371,14 @@ int main() {
 
 				ctl::expect_fail(s);
 			});
-		});
 
-		describe("std::string", []{
-			it("-s str", []{
+			it("-s true", []{
 				const char* argv[] = {
-					"exec",
+					"./exec",
 					"-s",
-					"str"
+					"true"
 				};
-				std::string s = "";
+				bool s = false;
 				std::vector<args::option> options = {
 					{"-s", &s}
 				};
@@ -369,8 +386,144 @@ int main() {
 				const int argc = std::distance(std::begin(argv), std::end(argv));
 				args::parse(argc, argv, options);
 
-				ctl::expect_equal(s, std::string("str"));
+				ctl::expect_ok(s);
 			});
+
+			it("-s false", []{
+				const char* argv[] = {
+					"./exec",
+					"-s",
+					"false"
+				};
+				bool s = true;
+				std::vector<args::option> options = {
+					{"-s", &s}
+				};
+
+				const int argc = std::distance(std::begin(argv), std::end(argv));
+				args::parse(argc, argv, options);
+
+				ctl::expect_fail(s);
+			});
+
+			it("-s on", []{
+				const char* argv[] = {
+					"./exec",
+					"-s",
+					"on"
+				};
+				bool s = false;
+				std::vector<args::option> options = {
+					{"-s", &s}
+				};
+
+				const int argc = std::distance(std::begin(argv), std::end(argv));
+				args::parse(argc, argv, options);
+
+				ctl::expect_ok(s);
+			});
+
+			it("-s off", []{
+				const char* argv[] = {
+					"./exec",
+					"-s",
+					"off"
+				};
+				bool s = true;
+				std::vector<args::option> options = {
+					{"-s", &s}
+				};
+
+				const int argc = std::distance(std::begin(argv), std::end(argv));
+				args::parse(argc, argv, options);
+
+				ctl::expect_fail(s);
+			});
+
+			it("-s yes", []{
+				const char* argv[] = {
+					"./exec",
+					"-s",
+					"yes"
+				};
+				bool s = false;
+				std::vector<args::option> options = {
+					{"-s", &s}
+				};
+
+				const int argc = std::distance(std::begin(argv), std::end(argv));
+				args::parse(argc, argv, options);
+
+				ctl::expect_ok(s);
+			});
+
+			it("-s no", []{
+				const char* argv[] = {
+					"./exec",
+					"-s",
+					"no"
+				};
+				bool s = true;
+				std::vector<args::option> options = {
+					{"-s", &s}
+				};
+
+				const int argc = std::distance(std::begin(argv), std::end(argv));
+				args::parse(argc, argv, options);
+
+				ctl::expect_fail(s);
+			});
+		});
+
+		it("std::string", []{
+			const char* argv[] = {
+				"exec",
+				"-s",
+				"str"
+			};
+			std::string s = "";
+			std::vector<args::option> options = {
+				{"-s", &s}
+			};
+
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+			args::parse(argc, argv, options);
+
+			ctl::expect_equal(s, std::string("str"));
+		});
+
+		it("int", []{
+			const char* argv[] = {
+				"exec",
+				"-i",
+				"1234567"
+			};
+			int i = 0;
+			std::vector<args::option> options = {
+				{"-i", &i}
+			};
+
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+			args::parse(argc, argv, options);
+
+			ctl::expect_equal(i, 1234567);
+		});
+
+		it("double", []{
+			const char* argv[] = {
+				"exec",
+				"-d",
+				"1234567.1234567"
+			};
+			double d = 0;
+			std::vector<args::option> options = {
+				{"-d", &d}
+			};
+
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+			args::parse(argc, argv, options);
+
+			ctl::expect_equal(d, 1234567.1234567);
 		});
 	});
 }
