@@ -105,7 +105,7 @@ int main() {
 			ctl::expect_ok(s);
 		});
 
-		it("short with value, -s1", []{
+		it("short without space, -s1", []{
 			const char* argv[] = {
 				"./exec",
 				"-s1"
@@ -121,7 +121,7 @@ int main() {
 			ctl::expect_ok(s);
 		});
 
-		it("short space value, -s 1", []{
+		it("short with value, -s 1", []{
 			const char* argv[] = {
 				"./exec",
 				"-s",
@@ -155,12 +155,52 @@ int main() {
 		});
 
 		it("long flag, --long", []{
+			const char* argv[] = {
+				"./exec",
+				"--long"
+			};
+			bool s = false;
+			std::vector<args::option> options = {
+				{"--long", &s}
+			};
+
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+			args::parse(argc, argv, options);
+
+			ctl::expect_ok(s);
 		});
 
 		it("long with value, --long 1", []{
+			const char* argv[] = {
+				"./exec",
+				"--long",
+				"1"
+			};
+			bool s = false;
+			std::vector<args::option> options = {
+				{"--long", &s}
+			};
+
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+			args::parse(argc, argv, options);
+
+			ctl::expect_ok(s);
 		});
 
 		it("long = value, --long=1", []{
+			const char* argv[] = {
+				"./exec",
+				"--long=1"
+			};
+			bool s = false;
+			std::vector<args::option> options = {
+				{"--long", &s}
+			};
+
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+			args::parse(argc, argv, options);
+
+			ctl::expect_ok(s);
 		});
 
 		describe("Mixed options", []{
