@@ -1,4 +1,5 @@
 #include <vector>
+#include <list>
 #include <iterator>
 #include <iostream>
 
@@ -6,6 +7,19 @@
 
 template<typename T>
 std::ostream& operator<<(std::ostream &ss, const std::vector<T>& v) {
+	ss << "[";
+	for (auto item = std::begin(v); item != std::end(v); item++) {
+		if (item != std::begin(v)) {
+			ss << ", ";
+		}
+		ss << *item;
+	}
+	ss << "]";
+	return ss;
+}
+
+template<typename T>
+std::ostream& operator<<(std::ostream &ss, const std::list<T>& v) {
 	ss << "[";
 	for (auto item = std::begin(v); item != std::end(v); item++) {
 		if (item != std::begin(v)) {
@@ -478,6 +492,28 @@ int main() {
 			args::parse(argc, argv, options);
 
 			std::vector expected = {0, 1, 2};
+			ctl::expect_equal(actual, expected);
+		});
+
+		it("std::list", []{
+			const char* argv[] = {
+				"exec",
+				"-v",
+				"0",
+				"-v",
+				"1",
+				"-v",
+				"2"
+			};
+			std::list<int> actual = {};
+			std::vector<args::option> options = {
+				{"-v", &actual}
+			};
+
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+			args::parse(argc, argv, options);
+
+			std::list expected = {0, 1, 2};
 			ctl::expect_equal(actual, expected);
 		});
 	});

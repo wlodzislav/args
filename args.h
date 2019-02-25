@@ -13,6 +13,7 @@
 #include <functional>
 #include <algorithm>
 #include <vector>
+#include <list>
 #include <string>
 #include <map>
 #include <stdexcept>
@@ -80,6 +81,16 @@ namespace {
 
 	template<typename C>
 	void parse_value(std::string value, std::vector<C>* destination) {
+		if (!value.empty()) {
+			std::stringstream stream(value);
+			C c;
+			stream >> c;
+			destination->push_back(c);
+		}
+	}
+
+	template<typename C>
+	void parse_value(std::string value, std::list<C>* destination) {
 		if (!value.empty()) {
 			std::stringstream stream(value);
 			C c;
