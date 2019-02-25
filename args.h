@@ -63,10 +63,10 @@ namespace {
 	constexpr bool a = is_option("-a");
 }
 
-namespace clap {
+namespace args {
 
 	struct option {
-		option(const clap::option&) = default;
+		option(const args::option&) = default;
 
 		template<typename Type>
 		option(const char* name, Type* destination);
@@ -131,9 +131,9 @@ namespace clap {
 	}
 
 	template<typename Allocator> // wtf Allocator?
-	void parse(int argc, const char** argv, const std::vector<clap::option, Allocator>& options);
+	void parse(int argc, const char** argv, const std::vector<args::option, Allocator>& options);
 
-	void parse(int argc, const char** argv, const std::initializer_list<clap::option>& options) {
+	void parse(int argc, const char** argv, const std::initializer_list<args::option>& options) {
 		std::vector<option> options_vec;
 		for( auto&& e : options ) {
 			options_vec.push_back(e);
@@ -142,7 +142,7 @@ namespace clap {
 	}
 
 	template<typename Allocator>
-	void parse(int argc, const char** argv, const std::vector<clap::option, Allocator>& options) {
+	void parse(int argc, const char** argv, const std::vector<args::option, Allocator>& options) {
 		std::map<std::string, std::function<void (const char*)>> global_options;
 		for( auto&& option : options ) {
 			if( !option.short_name.empty() ) {

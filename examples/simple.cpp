@@ -4,7 +4,7 @@
 
 #include "../args.h"
 
-using clap::option;
+using args::option;
 using std::vector;
 
 int main(int argc, const char** argv) {
@@ -14,7 +14,7 @@ int main(int argc, const char** argv) {
 		option{"-s", &s}
 	};
 
-	clap::parse(argc, argv, options);
+	args::parse(argc, argv, options);
 
 	std::clog << "-s " << s << "\n";
 }

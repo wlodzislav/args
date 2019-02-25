@@ -88,19 +88,19 @@ using namespace ctl;
 */
 
 int main() {
-	describe("clap::parse()", []{
+	describe("args::parse()", []{
 		it("short flag, -s", []{
 			const char* argv[] = {
 				"exec",
 				"-s"
 			};
 			bool s = false;
-			std::vector<clap::option> options = {
+			std::vector<args::option> options = {
 				{"-s", &s}
 			};
 
 			const int argc = std::distance(std::begin(argv), std::end(argv));
-			clap::parse(argc, argv, options);
+			args::parse(argc, argv, options);
 
 			ctl::expect_ok(s);
 		});
@@ -111,12 +111,12 @@ int main() {
 				"-s1"
 			};
 			bool s = false;
-			std::vector<clap::option> options = {
+			std::vector<args::option> options = {
 				{"-s", &s}
 			};
 
 			const int argc = std::distance(std::begin(argv), std::end(argv));
-			clap::parse(argc, argv, options);
+			args::parse(argc, argv, options);
 
 			ctl::expect_ok(s);
 		});
@@ -128,12 +128,12 @@ int main() {
 				"1"
 			};
 			bool s = false;
-			std::vector<clap::option> options = {
+			std::vector<args::option> options = {
 				{"-s", &s}
 			};
 
 			const int argc = std::distance(std::begin(argv), std::end(argv));
-			clap::parse(argc, argv, options);
+			args::parse(argc, argv, options);
 
 			ctl::expect_ok(s);
 		});
@@ -144,12 +144,12 @@ int main() {
 				"-s=1"
 			};
 			bool s = false;
-			std::vector<clap::option> options = {
+			std::vector<args::option> options = {
 				{"-s", &s}
 			};
 
 			const int argc = std::distance(std::begin(argv), std::end(argv));
-			clap::parse(argc, argv, options);
+			args::parse(argc, argv, options);
 
 			ctl::expect_ok(s);
 		});
@@ -171,12 +171,12 @@ int main() {
 					"--long=str"
 				};
 				std::string l = "";
-				std::vector<clap::option> options = {
+				std::vector<args::option> options = {
 					{"-s", "--long", &l}
 				};
 
 				const int argc = std::distance(std::begin(argv), std::end(argv));
-				clap::parse(argc, argv, options);
+				args::parse(argc, argv, options);
 
 				ctl::expect_equal(l, std::string("str"));
 			});
@@ -191,13 +191,13 @@ int main() {
 				};
 				bool s = false;
 				std::string l = "";
-				std::vector<clap::option> options = {
+				std::vector<args::option> options = {
 					{"-s", &s},
 					{"--long", &l}
 				};
 
 				const int argc = std::distance(std::begin(argv), std::end(argv));
-				clap::parse(argc, argv, options);
+				args::parse(argc, argv, options);
 
 				ctl::expect_ok(s);
 				ctl::expect_equal(l, std::string("str"));
@@ -212,13 +212,13 @@ int main() {
 				};
 				bool s = false;
 				std::string l = "";
-				std::vector<clap::option> options = {
+				std::vector<args::option> options = {
 					{"-s", &s},
 					{"--long", &l}
 				};
 
 				const int argc = std::distance(std::begin(argv), std::end(argv));
-				clap::parse(argc, argv, options);
+				args::parse(argc, argv, options);
 
 				ctl::expect_ok(s);
 				ctl::expect_equal(l, std::string("str"));
@@ -232,13 +232,13 @@ int main() {
 				};
 				bool s = false;
 				std::string l = "";
-				std::vector<clap::option> options = {
+				std::vector<args::option> options = {
 					{"-s", &s},
 					{"--long", &l}
 				};
 
 				const int argc = std::distance(std::begin(argv), std::end(argv));
-				clap::parse(argc, argv, options);
+				args::parse(argc, argv, options);
 
 				ctl::expect_ok(s);
 				ctl::expect_equal(l, std::string("str"));
@@ -254,12 +254,12 @@ int main() {
 					"-s"
 				};
 				bool s = false;
-				std::vector<clap::option> options = {
+				std::vector<args::option> options = {
 					{"-s", &s}
 				};
 
 				const int argc = std::distance(std::begin(argv), std::end(argv));
-				clap::parse(argc, argv, options);
+				args::parse(argc, argv, options);
 
 				ctl::expect_ok(s);
 			});
@@ -269,12 +269,12 @@ int main() {
 					"./exec"
 				};
 				bool s = false;
-				std::vector<clap::option> options = {
+				std::vector<args::option> options = {
 					{"-s", &s}
 				};
 
 				const int argc = std::distance(std::begin(argv), std::end(argv));
-				clap::parse(argc, argv, options);
+				args::parse(argc, argv, options);
 
 				ctl::expect_fail(s);
 			});
@@ -286,12 +286,12 @@ int main() {
 					"1"
 				};
 				bool s = false;
-				std::vector<clap::option> options = {
+				std::vector<args::option> options = {
 					{"-s", &s}
 				};
 
 				const int argc = std::distance(std::begin(argv), std::end(argv));
-				clap::parse(argc, argv, options);
+				args::parse(argc, argv, options);
 
 				ctl::expect_ok(s);
 			});
@@ -303,12 +303,12 @@ int main() {
 					"0"
 				};
 				bool s = true;
-				std::vector<clap::option> options = {
+				std::vector<args::option> options = {
 					{"-s", &s}
 				};
 
 				const int argc = std::distance(std::begin(argv), std::end(argv));
-				clap::parse(argc, argv, options);
+				args::parse(argc, argv, options);
 
 				ctl::expect_fail(s);
 			});
@@ -322,12 +322,12 @@ int main() {
 					"str"
 				};
 				std::string s = "";
-				std::vector<clap::option> options = {
+				std::vector<args::option> options = {
 					{"-s", &s}
 				};
 
 				const int argc = std::distance(std::begin(argv), std::end(argv));
-				clap::parse(argc, argv, options);
+				args::parse(argc, argv, options);
 
 				ctl::expect_equal(s, std::string("str"));
 			});
