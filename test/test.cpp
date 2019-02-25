@@ -1,14 +1,16 @@
+#include <iterator>
 #include <iostream>
 #include <vector>
 #include <list>
 #include <set>
 #include <unordered_set>
+#include <map>
+#include <unordered_map>
 
 #include "../args.h"
 
 template<typename T>
-std::enable_if_t<!std::is_convertible<T, std::string>::value, std::ostream&>
-operator<<(std::ostream &ss, const T& v) {
+std::ostream& print_arr(std::ostream &ss, const T& v) {
 	ss << "[";
 	for (auto item = std::begin(v); item != std::end(v); item++) {
 		if (item != std::begin(v)) {
@@ -18,6 +20,49 @@ operator<<(std::ostream &ss, const T& v) {
 	}
 	ss << "]";
 	return ss;
+}
+
+template<typename T>
+std::ostream& print_map(std::ostream &ss, const T& v) {
+	ss << "{";
+	for (auto item = std::begin(v); item != std::end(v); item++) {
+		if (item != std::begin(v)) {
+			ss << ", ";
+		}
+		ss << item->first << ": " << item->second;
+	}
+	ss << "}";
+	return ss;
+}
+
+template<typename T>
+std::ostream& operator<<(std::ostream &ss, const std::vector<T>& v) {
+	return print_arr(ss, v);
+}
+
+template<typename T>
+std::ostream& operator<<(std::ostream &ss, const std::list<T>& v) {
+	return print_arr(ss, v);
+}
+
+template<typename T>
+std::ostream& operator<<(std::ostream &ss, const std::set<T>& v) {
+	return print_arr(ss, v);
+}
+
+template<typename T>
+std::ostream& operator<<(std::ostream &ss, const std::unordered_set<T>& v) {
+	return print_arr(ss, v);
+}
+
+template<typename T, typename V>
+std::ostream& operator<<(std::ostream &ss, const std::map<T, V>& v) {
+	return print_map(ss, v);
+}
+
+template<typename T, typename V>
+std::ostream& operator<<(std::ostream &ss, const std::unordered_map<T, V>& v) {
+	return print_map(ss, v);
 }
 
 #include "./ctl.h"
@@ -547,6 +592,52 @@ int main() {
 			args::parse(argc, argv, options);
 
 			std::unordered_set expected = {0, 1, 2};
+			ctl::expect_equal(actual, expected);
+		});
+
+		it("std::map", []{
+			const char* argv[] = {
+				"exec",
+				"-v",
+				"a=A",
+				"-v",
+				"b=B"
+			};
+			std::map<std::string, std::string> actual = {};
+			std::vector<args::option> options = {
+				{"-v", &actual}
+			};
+
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+			args::parse(argc, argv, options);
+
+			std::map<std::string, std::string> expected = {
+				{"a", "A"},
+				{"b", "B"},
+			};
+			ctl::expect_equal(actual, expected);
+		});
+
+		it("std::unordered_map", []{
+			const char* argv[] = {
+				"exec",
+				"-v",
+				"a=A",
+				"-v",
+				"b=B"
+			};
+			std::unordered_map<std::string, std::string> actual = {};
+			std::vector<args::option> options = {
+				{"-v", &actual}
+			};
+
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+			args::parse(argc, argv, options);
+
+			std::unordered_map<std::string, std::string> expected = {
+				{"a", "A"},
+				{"b", "B"},
+			};
 			ctl::expect_equal(actual, expected);
 		});
 	});

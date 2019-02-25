@@ -21,9 +21,6 @@
 #include <iterator>
 #include <initializer_list>
 
-#define INSPECT(exp) std::clog << "INSPECT " << #exp << " = " << exp << " on line: " << __LINE__ << '\n'
-#define MARK std::clog << "MARK on line: " << __LINE__ << '\n'
-
 namespace {
 	bool is_option(std::string opt) {
 		return opt[0] == '-';
@@ -100,6 +97,34 @@ namespace {
 			typename T::value_type c;
 			stream >> c;
 			destination->insert(destination->end(), c);
+		}
+	}
+
+	template<typename T>
+	std::enable_if_t<!is_stringstreamable<T>::value
+		&& is_stringstreamable<typename T::key_type>::value
+		&& is_stringstreamable<typename T::mapped_type>::value
+	>
+	parse_value(std::string value, T* destination) {
+		if (!value.empty()) {
+			auto eq_pos = value.find('=');
+			if (eq_pos == std::string::npos) {
+				throw std::invalid_argument(
+					std::string("Invalid command line option. Value \"") +
+					value + '"' + "is not key=value pair.");
+			}
+
+			auto k_str = value.substr(0, eq_pos);
+			typename T::key_type k;
+			std::stringstream k_stream(k_str);
+			k_stream >> k;
+
+			auto v_str = value.substr(eq_pos + 1);
+			typename T::mapped_type v;
+			std::stringstream v_stream(v_str);
+			v_stream >> v;
+
+			(*destination)[k] = v;
 		}
 	}
 }
