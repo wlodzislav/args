@@ -61,31 +61,6 @@ namespace {
 	}
 
 	constexpr bool a = is_option("-a");
-}
-
-namespace args {
-
-	struct option {
-		option(const args::option&) = default;
-
-		template<typename Type>
-		option(const char* name, Type* destination);
-
-		template<typename Type>
-		option(const char* short_name, const char* long_name, Type* destination);
-
-		/*
-		template<typename Type>
-		option(const char* name, Type* destination, const char* description);
-
-		template<typename Type>
-		option(const char* short_name, const char* long_name, Type* destination, const char* description);
-		*/
-
-		const std::function<void (const char*)> parse;
-		const std::string short_name;
-		const std::string long_name;
-	};
 
 	template<typename Type>
 	void parse_value(const char* value_c, Type* destination) {
@@ -94,18 +69,6 @@ namespace args {
 			value >> *destination;
 		}
 	}
-
-	template<typename Type>
-	option::option(const char* name, Type* destination)
-		: short_name(is_short_option(name) ? name : ""),
-		long_name(is_long_option(name) ? name : ""),
-		parse([=](const char* value) { parse_value(value, destination);}) {}
-
-	template<typename Type>
-	option::option(const char* short_name, const char* long_name, Type* destination)
-		: short_name(is_short_option(short_name) ? short_name : ""),
-		long_name(is_long_option(long_name) ? long_name : ""),
-		parse([=](const char* value) { parse_value(value, destination);}) {}
 
 	template<>
 	void parse_value(const char* value_c, bool* destination) {
@@ -127,6 +90,36 @@ namespace args {
 			*destination = true;
 		}
 	}
+}
+
+namespace args {
+	struct option {
+		option(const args::option&) = default;
+
+		template<typename Type>
+		option(const char* name, Type* destination)
+			: short_name(is_short_option(name) ? name : ""),
+			long_name(is_long_option(name) ? name : ""),
+			parse([=](const char* value) { parse_value(value, destination);}) {}
+
+		template<typename Type>
+		option(const char* short_name, const char* long_name, Type* destination)
+			: short_name(is_short_option(short_name) ? short_name : ""),
+			long_name(is_long_option(long_name) ? long_name : ""),
+			parse([=](const char* value) { parse_value(value, destination);}) {}
+
+		/*
+		template<typename Type>
+		option(const char* name, Type* destination, const char* description);
+
+		template<typename Type>
+		option(const char* short_name, const char* long_name, Type* destination, const char* description);
+		*/
+
+		const std::function<void (const char*)> parse;
+		const std::string short_name;
+		const std::string long_name;
+	};
 
 	void parse(int argc, const char** argv, const std::vector<args::option>& options) {
 		std::map<std::string, std::function<void (const char*)>> global_options;
