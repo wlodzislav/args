@@ -77,6 +77,16 @@ namespace {
 			*destination = true;
 		}
 	}
+
+	template<typename C>
+	void parse_value(std::string value, std::vector<C>* destination) {
+		if (!value.empty()) {
+			std::stringstream stream(value);
+			C c;
+			stream >> c;
+			destination->push_back(c);
+		}
+	}
 }
 
 namespace args {

@@ -3,89 +3,22 @@
 #include <iostream>
 
 #include "../args.h"
+
+template<typename T>
+std::ostream& operator<<(std::ostream &ss, const std::vector<T>& v) {
+	ss << "[";
+	for (auto item = std::begin(v); item != std::end(v); item++) {
+		if (item != std::begin(v)) {
+			ss << ", ";
+		}
+		ss << *item;
+	}
+	ss << "]";
+	return ss;
+}
+
 #include "./ctl.h"
-
 using namespace ctl;
-
-/*
-
-	Support functors as options value destination
-	Support for -- option
-	Support for standart numeric and string types
-	Support for required values and default values
-	Support for --no- prefix with bool options
-	Support for non-conventional syntax: "-frtti", -fno-rtti" and "+fb"
-	Support for multiple option values
-	Support more more then one occurrences of an option or operand
-	Support for standart containers
-	Support for option groups
-	Support for commands, command-local options
-	Support for hidden options
-	format_quick_help
-	format_help
-	Support for validation via functor or regexp
-	Support for unregistered options
-	Support for options dependencies, usage pattern
-	Support for completeon generation via special option
-	Support for response files with set of options
-
-*/
-
-/*
-
-	exec -s --long
-	exec -s -a -b
-	exec -sab
-
-*/
-
-/*
-
-	Boolean
-
-		bool
-
-	Support for standart numeric types:
-
-		short
-		unsigned short
-		int
-		unsigned int
-		long
-		unsigned long
-		long long
-		unsigned long long
-		float
-		double
-		long double
-
-	Support for standart string types:
-
-		std::string     std::basic_string<char>
-		// with int max_size
-		char*
-
-	Support for standart sequence containers:
-
-		// with values delimiter
-
-		std::array<>
-		std::vector<>
-		std::list<>
-
-	Support for standart associative containers:
-
-		// with values delimiter
-	
-		std::set<>
-		std::unordered_set<>
-
-		// with pairs and key-value delimiter
-
-		std::map<>
-		std::unordered_map<>
-
-*/
 
 int main() {
 	describe("args::parse()", []{
@@ -524,6 +457,28 @@ int main() {
 			args::parse(argc, argv, options);
 
 			ctl::expect_equal(d, 1234567.1234567);
+		});
+
+		it("std::vector", []{
+			const char* argv[] = {
+				"exec",
+				"-v",
+				"0",
+				"-v",
+				"1",
+				"-v",
+				"2"
+			};
+			std::vector<int> actual = {};
+			std::vector<args::option> options = {
+				{"-v", &actual}
+			};
+
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+			args::parse(argc, argv, options);
+
+			std::vector expected = {0, 1, 2};
+			ctl::expect_equal(actual, expected);
 		});
 	});
 }
