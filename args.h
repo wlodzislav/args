@@ -24,56 +24,43 @@
 #define MARK std::clog << "MARK on line: " << __LINE__ << '\n'
 
 namespace {
-	constexpr bool is_option(const char* opt) {
+	bool is_option(std::string opt) {
 		return opt[0] == '-';
 	}
 
-	constexpr bool is_posible_short_option(const char* opt) {
-		return opt[0] == '-' && opt[1] != '-';
+	bool is_short_option(std::string opt) {
+		return opt[0] == '-' && opt[1] != '-' && opt.length() == 2;
 	}
 
-	constexpr bool is_short_option(const char* opt) {
-		return opt[0] == '-' && opt[1] != '-' && opt[2] == '\0';
-	}
-
-	constexpr bool is_short_option_width_eq_sign_value(const char* opt) {
+	bool is_short_option_width_eq_sign_value(std::string opt) {
 		return opt[0] == '-' && opt[1] != '-' && opt[2] == '=';
 	}
 
-	constexpr bool is_short_grouped_or_with_value(const char* opt) {
-		return opt[0] == '-' && opt[1] != '-' && opt[2] != '\0';
+	bool is_short_grouped_or_with_value(std::string opt) {
+		return opt[0] == '-' && opt[1] != '-' && opt.length() > 2;
 	}
 
-	constexpr bool is_short_grouped(const char* opt) {
-		return false;
+	bool is_long_option(std::string opt) {
+		bool has_eq = (opt.find('=') != std::string::npos);
+		return opt[0] == '-' && opt[1] == '-' && opt.length() > 2 && !has_eq;
 	}
 
-	bool is_long_option(const char* opt) {
-		std::string option(opt);
-		bool has_eq = (option.find("=") != std::string::npos);
-		return opt[0] == '-' && opt[1] == '-' && opt[2] != '\0' && !has_eq;
+	bool is_long_option_width_eq_sign_value(std::string opt) {
+		bool has_eq = (opt.find('=') != std::string::npos);
+		return opt[0] == '-' && opt[1] == '-' && opt.length() > 2 && has_eq;
 	}
-
-	bool is_long_option_width_eq_sign_value(const char* opt) {
-		std::string option(opt);
-		bool has_eq = (option.find("=") != std::string::npos);
-		return opt[0] == '-' && opt[1] == '-' && opt[2] != '\0' && has_eq;
-	}
-
-	constexpr bool a = is_option("-a");
 
 	template<typename Type>
-	void parse_value(const char* value_c, Type* destination) {
-		if (*value_c != '\0') {
-			std::stringstream value(value_c);
-			value >> *destination;
+	void parse_value(std::string value, Type* destination) {
+		if (!value.empty()) {
+			std::stringstream stream(value);
+			stream >> *destination;
 		}
 	}
 
 	template<>
-	void parse_value(const char* value_c, bool* destination) {
-		if (*value_c != '\0') {
-			std::string value(value_c);
+	void parse_value(std::string value, bool* destination) {
+		if (!value.empty()) {
 			if (value == "1" || value == "true" ||
 				value == "on" || value == "yes") {
 				*destination = true;
@@ -97,32 +84,29 @@ namespace args {
 		option(const args::option&) = default;
 
 		template<typename Type>
-		option(const char* name, Type* destination)
+		option(std::string name, Type* destination)
 			: short_name(is_short_option(name) ? name : ""),
 			long_name(is_long_option(name) ? name : ""),
-			parse([=](const char* value) { parse_value(value, destination);}) {}
+			parse([=](std::string value) { parse_value(value, destination);}) {}
 
 		template<typename Type>
-		option(const char* short_name, const char* long_name, Type* destination)
+		option(std::string short_name, std::string long_name, Type* destination)
 			: short_name(is_short_option(short_name) ? short_name : ""),
 			long_name(is_long_option(long_name) ? long_name : ""),
-			parse([=](const char* value) { parse_value(value, destination);}) {}
+			parse([=](std::string value) { parse_value(value, destination);}) {}
 
-		/*
-		template<typename Type>
-		option(const char* name, Type* destination, const char* description);
-
-		template<typename Type>
-		option(const char* short_name, const char* long_name, Type* destination, const char* description);
-		*/
-
-		const std::function<void (const char*)> parse;
+		const std::function<void (std::string)> parse;
 		const std::string short_name;
 		const std::string long_name;
 	};
 
 	void parse(int argc, const char** argv, const std::vector<args::option>& options) {
-		std::map<std::string, std::function<void (const char*)>> global_options;
+		auto args = std::vector<std::string>{};
+		for (const char** arg = argv + 1; arg < argv + argc; arg++) {
+			args.push_back(std::string(*arg));
+		}
+
+		std::map<std::string, std::function<void (std::string)>> global_options;
 		for (auto&& option : options) {
 			if (!option.short_name.empty()) {
 				global_options[option.short_name] = option.parse;
@@ -131,56 +115,53 @@ namespace args {
 				global_options[option.long_name] = option.parse;
 			}
 		}
-		for (const char** arg = argv + 1; arg < argv + argc; ++arg) {
+
+		for (auto arg = std::begin(args); arg != std::end(args); arg++) {
 			std::string option;
 			std::string value;
-			auto str_arg = std::string{*arg};
 			auto is_short_grouped = false;
-			//INSPECT(*arg);
 			if (is_short_option(*arg)) {
-				option = std::string(*arg);
-				auto&& next = std::next(arg);
-				if (next != argv + argc && !is_option(*next)) {
-					value = std::string(*next);
-					++arg;
+				option = *arg;
+				auto next = std::next(arg);
+				if (next != std::end(args) && !is_option(*next)) {
+					value = *next;
+					arg++;
 				}
 			} else if (is_short_option_width_eq_sign_value(*arg)) {
-				option = std::string(*arg, 2);
-				value = std::string(*arg + 3);
+				option = arg->substr(0, 2);
+				value = arg->substr(3);
 			} else if (is_short_grouped_or_with_value(*arg)) {
-				auto str_arg = std::string{*arg};
-				is_short_grouped = std::all_of(str_arg.begin() + 1, str_arg.end(), [&](auto c) -> bool {
+				is_short_grouped = std::all_of(std::begin(*arg) + 1, std::end(*arg), [&](auto c) -> bool {
 					return global_options.find(std::string("-") + c) != global_options.end();
 				});
-				if (is_short_grouped) {
-				} else {
-					option = std::string(*arg, 2);
-					value = std::string(*arg + 2);
+				if (!is_short_grouped) {
+					option = arg->substr(0, 2);
+					value = arg->substr(2);
 				}
 			} else if (is_long_option(*arg)) {
-				option = std::string(*arg);
-				auto&& next = std::next(arg);
-				if( next != argv + argc && !is_option(*next) ) {
-					value = std::string(*next);
-					++arg;
+				option = *arg;
+				auto next = std::next(arg);
+				if( next != std::end(args) && !is_option(*next) ) {
+					value = *next;
+					arg++;
 				}
 			}
 			else if (is_long_option_width_eq_sign_value(*arg)) {
 				std::string::size_type eq_pos = std::string(*arg).find("=");
-				option = std::string(*arg, eq_pos);
-				value = std::string(*arg + eq_pos + 1);
+				option = arg->substr(0, eq_pos);
+				value = arg->substr(eq_pos + 1);
 			}
 
 			if (is_short_grouped) {
-				std::for_each(str_arg.begin() + 1, str_arg.end(), [&](auto c) {
+				std::for_each(std::begin(*arg) + 1, std::end(*arg), [&](auto c) {
 					auto option = std::string("-") + c;
 					auto&& it = global_options.find(option);
-					it->second(value.c_str());
+					it->second(value);
 				});
 			} else {
 				auto&& it = global_options.find(option);
 				if(it != global_options.end()) {
-					it->second(value.c_str());
+					it->second(value);
 				} else {
 					throw std::invalid_argument(std::string("Invalid command line option \"") + *arg + "\".");
 				}
