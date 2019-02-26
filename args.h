@@ -19,7 +19,6 @@
 #include <stdexcept>
 #include <iostream>
 #include <iterator>
-#include <initializer_list>
 
 namespace {
 	bool is_option(std::string opt) {
@@ -150,81 +149,103 @@ namespace args {
 		const std::string long_name;
 	};
 
-	void parse(int argc, const char** argv, const std::vector<args::option>& options) {
-		auto args = std::vector<std::string>{};
-		for (const char** arg = argv + 1; arg < argv + argc; arg++) {
-			args.push_back(std::string(*arg));
-		}
 
-		std::map<std::string, std::function<void (std::string)>> global_options;
-		for (auto&& option : options) {
+	class parser {
+		private:
+
+		std::map<std::string, std::function<void (std::string)>> global_options = {};
+
+		public:
+
+		parser& option(option option) {
 			if (!option.short_name.empty()) {
 				global_options[option.short_name] = option.parse;
 			}
 			if (!option.long_name.empty()) {
 				global_options[option.long_name] = option.parse;
 			}
+			return *this;
 		}
 
-		for (auto arg = std::begin(args); arg != std::end(args); arg++) {
-			std::string option;
-			std::string value;
-			auto is_short_grouped = false;
-			if (is_short_option(*arg)) {
-				option = *arg;
-				auto next = std::next(arg);
-				if (next != std::end(args) && !is_option(*next)) {
-					value = *next;
-					arg++;
-				}
-			} else if (is_short_option_width_eq_sign_value(*arg)) {
-				option = arg->substr(0, 2);
-				value = arg->substr(3);
-			} else if (is_short_grouped_or_with_value(*arg)) {
-				is_short_grouped = std::all_of(std::begin(*arg) + 1, std::end(*arg), [&](auto c) -> bool {
-					return global_options.find(std::string("-") + c) != global_options.end();
-				});
-				if (!is_short_grouped) {
+		template<typename T>
+		parser& option(std::string name, T* destination) {
+			global_options[name] = [=](std::string value) { parse_value(value, destination); };
+			return *this;
+		}
+
+		template<typename T>
+		parser& option(std::string short_name, std::string long_name, T* destination) {
+			global_options[short_name] = [=](std::string value) { parse_value(value, destination); };
+			global_options[long_name] = [=](std::string value) { parse_value(value, destination); };
+			return *this;
+		}
+
+		void parse(int argc, const char** argv) {
+			auto args = std::vector<std::string>{};
+			for (const char** arg = argv + 1; arg < argv + argc; arg++) {
+				args.push_back(std::string(*arg));
+			}
+
+			for (auto arg = std::begin(args); arg != std::end(args); arg++) {
+				std::string option;
+				std::string value;
+				auto is_short_grouped = false;
+				if (is_short_option(*arg)) {
+					option = *arg;
+					auto next = std::next(arg);
+					if (next != std::end(args) && !is_option(*next)) {
+						value = *next;
+						arg++;
+					}
+				} else if (is_short_option_width_eq_sign_value(*arg)) {
 					option = arg->substr(0, 2);
-					value = arg->substr(2);
+					value = arg->substr(3);
+				} else if (is_short_grouped_or_with_value(*arg)) {
+					is_short_grouped = std::all_of(std::begin(*arg) + 1, std::end(*arg), [&](auto c) -> bool {
+						return global_options.find(std::string("-") + c) != global_options.end();
+					});
+					if (!is_short_grouped) {
+						option = arg->substr(0, 2);
+						value = arg->substr(2);
+					}
+				} else if (is_long_option(*arg)) {
+					option = *arg;
+					auto next = std::next(arg);
+					if( next != std::end(args) && !is_option(*next) ) {
+						value = *next;
+						arg++;
+					}
 				}
-			} else if (is_long_option(*arg)) {
-				option = *arg;
-				auto next = std::next(arg);
-				if( next != std::end(args) && !is_option(*next) ) {
-					value = *next;
-					arg++;
+				else if (is_long_option_width_eq_sign_value(*arg)) {
+					std::string::size_type eq_pos = std::string(*arg).find("=");
+					option = arg->substr(0, eq_pos);
+					value = arg->substr(eq_pos + 1);
 				}
-			}
-			else if (is_long_option_width_eq_sign_value(*arg)) {
-				std::string::size_type eq_pos = std::string(*arg).find("=");
-				option = arg->substr(0, eq_pos);
-				value = arg->substr(eq_pos + 1);
-			}
 
-			if (is_short_grouped) {
-				std::for_each(std::begin(*arg) + 1, std::end(*arg), [&](auto c) {
-					auto option = std::string("-") + c;
-					auto&& it = global_options.find(option);
-					it->second(value);
-				});
-			} else {
-				auto&& it = global_options.find(option);
-				if(it != global_options.end()) {
-					it->second(value);
+				if (is_short_grouped) {
+					std::for_each(std::begin(*arg) + 1, std::end(*arg), [&](auto c) {
+						auto option = std::string("-") + c;
+						auto&& it = global_options.find(option);
+						it->second(value);
+					});
 				} else {
-					throw std::invalid_argument(std::string("Invalid command line option \"") + *arg + "\".");
+					auto&& it = global_options.find(option);
+					if(it != global_options.end()) {
+						it->second(value);
+					} else {
+						throw std::invalid_argument(std::string("Invalid command line option \"") + *arg + "\".");
+					}
 				}
 			}
 		}
-	}
+	};
 
-	void parse(int argc, const char** argv, const std::initializer_list<args::option>& options) {
-		std::vector<option> options_vec;
-		for (auto&& e : options) {
-			options_vec.push_back(e);
+	void parse(int argc, const char** argv, const std::vector<args::option>& options) {
+		auto p = parser{};
+		for (auto& option : options) {
+			p.option(option);
 		}
-		parse(argc, argv, options_vec);
+		p.parse(argc, argv);
 	}
 }
 
