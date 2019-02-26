@@ -154,29 +154,44 @@ namespace args {
 		private:
 
 		std::map<std::string, std::function<void (std::string)>> global_options = {};
+		int positional_index = 0;
+		std::vector<std::function<void (std::string)>> positional_args = {};
+		std::function<void (std::string)> rest_args;
 
 		public:
 
 		parser& option(option option) {
 			if (!option.short_name.empty()) {
-				global_options[option.short_name] = option.parse;
+				this->global_options[option.short_name] = option.parse;
 			}
 			if (!option.long_name.empty()) {
-				global_options[option.long_name] = option.parse;
+				this->global_options[option.long_name] = option.parse;
 			}
+			return *this;
+		}
+
+		template<typename T>
+		parser& positional(T* destination) {
+			positional_args.push_back([=](std::string value) { parse_value(value, destination); });
+			return *this;
+		}
+
+		template<typename T>
+		parser& rest(T* destination) {
+			rest_args = [=](std::string value) { parse_value(value, destination); };
 			return *this;
 		}
 
 		template<typename T>
 		parser& option(std::string name, T* destination) {
-			global_options[name] = [=](std::string value) { parse_value(value, destination); };
+			this->global_options[name] = [=](std::string value) { parse_value(value, destination); };
 			return *this;
 		}
 
 		template<typename T>
 		parser& option(std::string short_name, std::string long_name, T* destination) {
-			global_options[short_name] = [=](std::string value) { parse_value(value, destination); };
-			global_options[long_name] = [=](std::string value) { parse_value(value, destination); };
+			this->global_options[short_name] = [=](std::string value) { parse_value(value, destination); };
+			this->global_options[long_name] = [=](std::string value) { parse_value(value, destination); };
 			return *this;
 		}
 
@@ -202,7 +217,7 @@ namespace args {
 					value = arg->substr(3);
 				} else if (is_short_grouped_or_with_value(*arg)) {
 					is_short_grouped = std::all_of(std::begin(*arg) + 1, std::end(*arg), [&](auto c) -> bool {
-						return global_options.find(std::string("-") + c) != global_options.end();
+						return this->global_options.find(std::string("-") + c) != this->global_options.end();
 					});
 					if (!is_short_grouped) {
 						option = arg->substr(0, 2);
@@ -220,17 +235,24 @@ namespace args {
 					std::string::size_type eq_pos = std::string(*arg).find("=");
 					option = arg->substr(0, eq_pos);
 					value = arg->substr(eq_pos + 1);
+				} else {
+					if (this->positional_args.size() > this->positional_index) {
+						this->positional_args[this->positional_index](*arg);
+						this->positional_index++;
+					} else if (this->rest_args) {
+						this->rest_args(*arg);
+					}
 				}
 
 				if (is_short_grouped) {
 					std::for_each(std::begin(*arg) + 1, std::end(*arg), [&](auto c) {
 						auto option = std::string("-") + c;
-						auto&& it = global_options.find(option);
+						auto&& it = this->global_options.find(option);
 						it->second(value);
 					});
-				} else {
-					auto&& it = global_options.find(option);
-					if(it != global_options.end()) {
+				} else if (!option.empty()) {
+					auto&& it = this->global_options.find(option);
+					if(it != this->global_options.end()) {
 						it->second(value);
 					} else {
 						throw std::invalid_argument(std::string("Invalid command line option \"") + *arg + "\".");
