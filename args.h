@@ -19,6 +19,7 @@
 #include <stdexcept>
 #include <iostream>
 #include <iterator>
+#include <optional>
 
 namespace {
 	bool is_option(std::string opt) {
@@ -85,10 +86,6 @@ namespace {
 	template<typename T>
 	std::enable_if_t<!is_stringstreamable<T>::value
 		&& is_stringstreamable<typename T::value_type>::value
-		&& std::is_same<
-			decltype(std::declval<T>().insert(std::declval<T>().end(), std::declval<typename T::value_type>())),
-			typename T::iterator
-		>::value
 	>
 	parse_value(std::string value, T* destination) {
 		if (!value.empty()) {
@@ -126,49 +123,107 @@ namespace {
 			(*destination)[k] = v;
 		}
 	}
+
+	template<typename T>
+	std::optional<typename T::value_type> find_by_name(const T& c, const std::string name) {
+		auto it = std::find_if(std::begin(c), std::end(c), [&](auto o) {
+			return o.name == name || o.alias == name;
+		});
+		if (it != std::end(c)) {
+			return *it;
+		} else {
+			return {};
+		}
+	}
 }
 
 namespace args {
 	struct option {
-		option(const args::option&) = default;
+		option(const option&) = default;
 
 		template<typename Type>
 		option(std::string name, Type* destination)
-			: short_name(is_short_option(name) ? name : ""),
-			long_name(is_long_option(name) ? name : ""),
+			: name(name),
+			alias(""),
 			parse([=](std::string value) { parse_value(value, destination);}) {}
 
 		template<typename Type>
-		option(std::string short_name, std::string long_name, Type* destination)
-			: short_name(is_short_option(short_name) ? short_name : ""),
-			long_name(is_long_option(long_name) ? long_name : ""),
+		option(std::string name, std::string alias, Type* destination)
+			: name(name),
+			alias(alias),
 			parse([=](std::string value) { parse_value(value, destination);}) {}
 
 		const std::function<void (std::string)> parse;
-		const std::string short_name;
-		const std::string long_name;
+		const std::string name;
+		const std::string alias;
 	};
+}
 
+namespace {
+	struct command_internal {
+		command_internal(const command_internal&) = default;
 
+		std::vector<args::option> options = {};
+		std::vector<std::function<void (std::string)>> positional_args = {};
+		std::function<void (std::string)> rest_args = 0;
+		std::function<void ()> action_fun = 0;
+		const std::string name;
+		const std::string alias;
+
+		command_internal(std::string name)
+			: name(name),
+			alias("") {}
+
+		command_internal(std::string name, std::string alias)
+			: name(name),
+			alias(alias) {}
+
+		template<typename T>
+		command_internal& positional(T* destination) {
+			positional_args.push_back([=](std::string value) { parse_value(value, destination); });
+			return *this;
+		}
+
+		template<typename T>
+		command_internal& rest(T* destination) {
+			rest_args = [=](std::string value) { parse_value(value, destination); };
+			return *this;
+		}
+
+		command_internal& option(args::option option) {
+			this->options.push_back(option);
+			return *this;
+		}
+
+		template<typename T>
+		command_internal& option(std::string name, T* destination) {
+			this->options.emplace_back(name, destination);
+			return *this;
+		}
+
+		template<typename T>
+		command_internal& option(std::string name, std::string alias, T* destination) {
+			this->options.emplace_back(name, alias, destination);
+			return *this;
+		}
+
+		command_internal& action(std::function<void (void)> action) {
+			this->action_fun = action;
+			return *this;
+		}
+	};
+}
+
+namespace args {
 	class parser {
 		private:
 
-		std::map<std::string, std::function<void (std::string)>> global_options = {};
-		int positional_index = 0;
+		std::vector<option> options = {};
 		std::vector<std::function<void (std::string)>> positional_args = {};
-		std::function<void (std::string)> rest_args;
+		std::function<void (std::string)> rest_args = 0;
+		std::vector<command_internal> commands = {};
 
 		public:
-
-		parser& option(option option) {
-			if (!option.short_name.empty()) {
-				this->global_options[option.short_name] = option.parse;
-			}
-			if (!option.long_name.empty()) {
-				this->global_options[option.long_name] = option.parse;
-			}
-			return *this;
-		}
 
 		template<typename T>
 		parser& positional(T* destination) {
@@ -182,17 +237,29 @@ namespace args {
 			return *this;
 		}
 
-		template<typename T>
-		parser& option(std::string name, T* destination) {
-			this->global_options[name] = [=](std::string value) { parse_value(value, destination); };
+		parser& option(option option) {
+			this->options.push_back(option);
 			return *this;
 		}
 
 		template<typename T>
-		parser& option(std::string short_name, std::string long_name, T* destination) {
-			this->global_options[short_name] = [=](std::string value) { parse_value(value, destination); };
-			this->global_options[long_name] = [=](std::string value) { parse_value(value, destination); };
+		parser& option(std::string name, T* destination) {
+			this->options.emplace_back(name, destination);
 			return *this;
+		}
+
+		template<typename T>
+		parser& option(std::string name, std::string alias, T* destination) {
+			this->options.emplace_back(name, alias, destination);
+			return *this;
+		}
+
+		command_internal& command(std::string name) {
+			return this->commands.emplace_back(name);
+		}
+
+		command_internal& command(std::string name, std::string alias) {
+			return this->commands.emplace_back(name, alias);
 		}
 
 		void parse(int argc, const char** argv) {
@@ -201,62 +268,123 @@ namespace args {
 				args.push_back(std::string(*arg));
 			}
 
+			auto positional_index = 0;
+			auto command_positional_index = 0;
+			auto command_it = std::end(this->commands);
 			for (auto arg = std::begin(args); arg != std::end(args); arg++) {
-				std::string option;
+				std::string name;
 				std::string value;
 				auto is_short_grouped = false;
-				if (is_short_option(*arg)) {
-					option = *arg;
-					auto next = std::next(arg);
-					if (next != std::end(args) && !is_option(*next)) {
-						value = *next;
-						arg++;
+				if (is_option(*arg)) {
+					if (is_short_option(*arg)) {
+						name = *arg;
+						auto next = std::next(arg);
+						if (next != std::end(args) && !is_option(*next)) {
+							value = *next;
+							arg++;
+						}
+					} else if (is_short_option_width_eq_sign_value(*arg)) {
+						name = arg->substr(0, 2);
+						value = arg->substr(3);
+					} else if (is_short_grouped_or_with_value(*arg)) {
+						is_short_grouped = std::all_of(std::begin(*arg) + 1, std::end(*arg), [&](auto c) {
+							auto name = std::string("-") + c;
+							if (command_it != std::end(this->commands)) {
+								if (auto c_it = find_by_name(command_it->options, name)) {
+									return c_it;
+								} else {
+									auto g_it = find_by_name(this->options, name);
+									return g_it;
+								}
+							} else {
+								auto g_it = find_by_name(this->options, name);
+								return g_it;
+							}
+						});
+						if (!is_short_grouped) {
+							name = arg->substr(0, 2);
+							value = arg->substr(2);
+						}
+					} else if (is_long_option(*arg)) {
+						name = *arg;
+						auto next = std::next(arg);
+						if( next != std::end(args) && !is_option(*next) ) {
+							value = *next;
+							arg++;
+						}
 					}
-				} else if (is_short_option_width_eq_sign_value(*arg)) {
-					option = arg->substr(0, 2);
-					value = arg->substr(3);
-				} else if (is_short_grouped_or_with_value(*arg)) {
-					is_short_grouped = std::all_of(std::begin(*arg) + 1, std::end(*arg), [&](auto c) -> bool {
-						return this->global_options.find(std::string("-") + c) != this->global_options.end();
-					});
-					if (!is_short_grouped) {
-						option = arg->substr(0, 2);
-						value = arg->substr(2);
+					else if (is_long_option_width_eq_sign_value(*arg)) {
+						std::string::size_type eq_pos = std::string(*arg).find("=");
+						name = arg->substr(0, eq_pos);
+						value = arg->substr(eq_pos + 1);
 					}
-				} else if (is_long_option(*arg)) {
-					option = *arg;
-					auto next = std::next(arg);
-					if( next != std::end(args) && !is_option(*next) ) {
-						value = *next;
-						arg++;
-					}
-				}
-				else if (is_long_option_width_eq_sign_value(*arg)) {
-					std::string::size_type eq_pos = std::string(*arg).find("=");
-					option = arg->substr(0, eq_pos);
-					value = arg->substr(eq_pos + 1);
-				} else {
-					if (this->positional_args.size() > this->positional_index) {
-						this->positional_args[this->positional_index](*arg);
-						this->positional_index++;
-					} else if (this->rest_args) {
-						this->rest_args(*arg);
-					}
-				}
 
-				if (is_short_grouped) {
-					std::for_each(std::begin(*arg) + 1, std::end(*arg), [&](auto c) {
-						auto option = std::string("-") + c;
-						auto&& it = this->global_options.find(option);
-						it->second(value);
-					});
-				} else if (!option.empty()) {
-					auto&& it = this->global_options.find(option);
-					if(it != this->global_options.end()) {
-						it->second(value);
-					} else {
-						throw std::invalid_argument(std::string("Invalid command line option \"") + *arg + "\".");
+					if (is_short_grouped) {
+						std::for_each(std::begin(*arg) + 1, std::end(*arg), [&](auto c) {
+							auto name = std::string("-") + c;
+							if (command_it != std::end(this->commands)) {
+								if (auto c_it = find_by_name(command_it->options, name)) {
+									c_it->parse(value);
+								} else {
+									auto g_it = find_by_name(this->options, name);
+									g_it->parse(value);
+								}
+							} else {
+								auto g_it = find_by_name(this->options, name);
+								g_it->parse(value);
+							}
+						});
+					} else if (!name.empty()) {
+						if (command_it != std::end(this->commands)) {
+							if (auto c_it = find_by_name(command_it->options, name)) {
+								c_it->parse(value);
+							} else if(auto g_it = find_by_name(this->options, name)) {
+								g_it->parse(value);
+							} else {
+								throw std::invalid_argument(std::string("Invalid command line option \"") + *arg + "\".");
+							}
+						} else if (auto g_it = find_by_name(this->options, name)) {
+							g_it->parse(value);
+						} else {
+							throw std::invalid_argument(std::string("Invalid command line option \"") + *arg + "\".");
+						}
 					}
+				} else {
+					auto it = std::find_if(std::begin(this->commands), std::end(this->commands), [&](auto c) {
+						return c.name == *arg || c.alias == *arg;
+					});
+					if (it != std::end(this->commands)) {
+						command_it = it;
+					} else {
+						if (command_it != std::end(this->commands)) {
+							if (command_it->positional_args.size() > command_positional_index) {
+								command_it->positional_args[command_positional_index](*arg);
+								command_positional_index++;
+							} else if (command_it->rest_args) {
+								command_it->rest_args(*arg);
+							} else {
+								if (this->positional_args.size() > positional_index) {
+									this->positional_args[positional_index](*arg);
+									positional_index++;
+								} else if (this->rest_args) {
+									this->rest_args(*arg);
+								}
+							}
+						} else {
+							if (this->positional_args.size() > positional_index) {
+								this->positional_args[positional_index](*arg);
+								positional_index++;
+							} else if (this->rest_args) {
+								this->rest_args(*arg);
+							}
+						}
+					}
+				}
+			}
+
+			if (command_it != std::end(this->commands)) {
+				if (command_it->action_fun) {
+					command_it->action_fun();
 				}
 			}
 		}
