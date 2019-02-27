@@ -560,6 +560,48 @@ int main() {
 		});
 
 		describe("Required options", []{
+			it("simple syntax name", []{
+				const char* argv[] = {
+					"exec"
+				};
+				const int argc = std::distance(std::begin(argv), std::end(argv));
+
+				auto d = false;
+				args::options options = {
+					{args::required, "-d", &d},
+				};
+
+				auto catched = false;
+				try {
+					args::parse(argc, argv, options);
+				} catch (args::missing_option err) {
+					catched = true;
+					ctl::expect_equal(err.option, "-d"s);
+				}
+				ctl::expect_ok(catched);
+			});
+
+			it("simple syntax short + long", []{
+				const char* argv[] = {
+					"exec"
+				};
+				const int argc = std::distance(std::begin(argv), std::end(argv));
+
+				auto e = false;
+				args::options options = {
+					{args::required, "-e", "--ee", &e},
+				};
+
+				auto catched = false;
+				try {
+					args::parse(argc, argv, options);
+				} catch (args::missing_option err) {
+					catched = true;
+					ctl::expect_equal(err.option, "-e, --ee"s);
+				}
+				ctl::expect_ok(catched);
+			});
+
 			it("name", []{
 				const char* argv[] = {
 					"./exec"
@@ -580,7 +622,7 @@ int main() {
 				ctl::expect_ok(catched);
 			});
 
-			it("short_name, long_name", []{
+			it("short_name + long_name", []{
 				const char* argv[] = {
 					"./exec"
 				};
@@ -644,7 +686,7 @@ int main() {
 				ctl::expect_ok(catched);
 			});
 
-			it("command + short_name, long_name", []{
+			it("command + short_name + long_name", []{
 				const char* argv[] = {
 					"./exec",
 					"cmd"
@@ -1276,6 +1318,526 @@ int main() {
 				{"a", "A"},
 				{"b", "B"},
 			});
+		});
+	});
+	describe("Overloads", []{
+		it("simple syntax options", []{
+			const char* argv[] = {
+				"exec",
+				"-a",
+				"-b",
+				"--cc",
+				"-d",
+				"-e",
+				"--ff"
+			};
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto a = false;
+			auto b = false;
+			auto c = false;
+			auto d = false;
+			auto e = false;
+			auto f = false;
+			args::options options = {
+				{"-a", &a},
+				{"-b", "--bb", &b},
+				{"-c", "--cc", &c},
+				{args::required, "-d", &d},
+				{args::required, "-e", "--ee", &e},
+				{args::required, "-f", "--ff", &f}
+			};
+
+			args::parse(argc, argv, options);
+
+			ctl::expect_equal(a, true);
+			ctl::expect_equal(b, true);
+			ctl::expect_equal(c, true);
+			ctl::expect_equal(d, true);
+			ctl::expect_equal(e, true);
+			ctl::expect_equal(f, true);
+		});
+
+		it("options", []{
+			const char* argv[] = {
+				"exec",
+				"-a",
+				"-b",
+				"--cc",
+				"-d",
+				"-e",
+				"--ff"
+			};
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto a = false;
+			auto b = false;
+			auto c = false;
+			auto d = false;
+			auto e = false;
+			auto f = false;
+
+			auto p = args::parser{}
+				.option("-a", &a)
+				.option("-b", "--bb", &b)
+				.option("-c", "--cc", &c)
+				.option(args::required, "-d", &d)
+				.option(args::required, "-e", "--ee", &e)
+				.option(args::required, "-f", "--ff", &f);
+
+			p.parse(argc, argv);
+
+			ctl::expect_equal(a, true);
+			ctl::expect_equal(b, true);
+			ctl::expect_equal(c, true);
+			ctl::expect_equal(d, true);
+			ctl::expect_equal(e, true);
+			ctl::expect_equal(f, true);
+		});
+
+		it("options handlers", []{
+			const char* argv[] = {
+				"exec",
+				"-a",
+				"-b",
+				"--cc",
+				"-d",
+				"-e",
+				"--ff"
+			};
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto a = false;
+			auto b = false;
+			auto c = false;
+			auto d = false;
+			auto e = false;
+			auto f = false;
+
+			auto p = args::parser{}
+				.option<bool>("-a", [&](auto v) { a = v; })
+				.option<bool>("-b", "--bb", [&](auto v) { b = v; })
+				.option<bool>("-c", "--cc", [&](auto v) { c = v; })
+				.option<bool>(args::required, "-d", [&](auto v) { d = v; })
+				.option<bool>(args::required, "-e", "--ee", [&](auto v) { e = v; })
+				.option<bool>(args::required, "-f", "--ff", [&](auto v) { f = v; });
+
+			p.parse(argc, argv);
+
+			ctl::expect_equal(a, true);
+			ctl::expect_equal(b, true);
+			ctl::expect_equal(c, true);
+			ctl::expect_equal(d, true);
+			ctl::expect_equal(e, true);
+			ctl::expect_equal(f, true);
+		});
+
+		it("args", []{
+			const char* argv[] = {
+				"exec",
+				"true",
+				"true",
+				"true"
+			};
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto a = false;
+			auto b = false;
+			auto c = false;
+
+			auto p = args::parser{}
+				.positional(&a)
+				.positional("b", &b)
+				.positional(args::required, "c", &c);
+
+			p.parse(argc, argv);
+
+			ctl::expect_equal(a, true);
+			ctl::expect_equal(b, true);
+			ctl::expect_equal(c, true);
+		});
+
+		it("args handlers", []{
+			const char* argv[] = {
+				"exec",
+				"true",
+				"true",
+				"true"
+			};
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto a = false;
+			auto b = false;
+			auto c = false;
+
+			auto p = args::parser{}
+				.positional<bool>([&](auto v) { a = v; })
+				.positional<bool>("b", [&](auto v) { b = v; })
+				.positional<bool>(args::required, "c", [&](auto v) { c = v; });
+
+			p.parse(argc, argv);
+
+			ctl::expect_equal(a, true);
+			ctl::expect_equal(b, true);
+			ctl::expect_equal(c, true);
+		});
+
+		it("rest", []{
+			const char* argv[] = {
+				"exec",
+				"0",
+				"1"
+			};
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto r = std::vector<int>{};
+			auto p = args::parser{}
+				.rest(&r);
+
+			p.parse(argc, argv);
+
+			ctl::expect_equal(r, {0, 1});
+		});
+
+		it("rest handler", []{
+			const char* argv[] = {
+				"exec",
+				"0",
+				"1"
+			};
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto r = std::vector<int>{};
+			auto p = args::parser{}
+				.rest<bool>([&](auto v) { r.push_back(v); });
+
+			p.parse(argc, argv);
+
+			ctl::expect_equal(r, {0, 1});
+		});
+
+		it("named rest", []{
+			const char* argv[] = {
+				"exec",
+				"0",
+				"1"
+			};
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto r = std::vector<int>{};
+			auto p = args::parser{}
+				.rest("rest", &r);
+
+			p.parse(argc, argv);
+
+			ctl::expect_equal(r, {0, 1});
+		});
+
+		it("named rest handler", []{
+			const char* argv[] = {
+				"exec",
+				"0",
+				"1"
+			};
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto r = std::vector<int>{};
+			auto p = args::parser{}
+				.rest<bool>("rest", [&](auto v) { r.push_back(v); });
+
+			p.parse(argc, argv);
+
+			ctl::expect_equal(r, {0, 1});
+		});
+
+		it("required named rest", []{
+			const char* argv[] = {
+				"exec",
+				"0",
+				"1"
+			};
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto r = std::vector<int>{};
+			auto p = args::parser{}
+				.rest(args::required, "rest", &r);
+
+			p.parse(argc, argv);
+
+			ctl::expect_equal(r, {0, 1});
+		});
+
+		it("required named rest handler", []{
+			const char* argv[] = {
+				"exec",
+				"0",
+				"1"
+			};
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto r = std::vector<int>{};
+			auto p = args::parser{}
+				.rest<bool>(args::required, "rest", [&](auto v) { r.push_back(v); });
+
+			p.parse(argc, argv);
+
+			ctl::expect_equal(r, {0, 1});
+		});
+
+		it("command options", []{
+			const char* argv[] = {
+				"exec",
+				"cmd",
+				"-a",
+				"-b",
+				"--cc",
+				"-d",
+				"-e",
+				"--ff"
+			};
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto a = false;
+			auto b = false;
+			auto c = false;
+			auto d = false;
+			auto e = false;
+			auto f = false;
+
+			auto p = args::parser{};
+
+			p.command("cmd")
+				.option("-a", &a)
+				.option("-b", "--bb", &b)
+				.option("-c", "--cc", &c)
+				.option(args::required, "-d", &d)
+				.option(args::required, "-e", "--ee", &e)
+				.option(args::required, "-f", "--ff", &f);
+
+			p.parse(argc, argv);
+
+			ctl::expect_equal(a, true);
+			ctl::expect_equal(b, true);
+			ctl::expect_equal(c, true);
+			ctl::expect_equal(d, true);
+			ctl::expect_equal(e, true);
+			ctl::expect_equal(f, true);
+		});
+
+		it("command options handlers", []{
+			const char* argv[] = {
+				"exec",
+				"cmd",
+				"-a",
+				"-b",
+				"--cc",
+				"-d",
+				"-e",
+				"--ff"
+			};
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto a = false;
+			auto b = false;
+			auto c = false;
+			auto d = false;
+			auto e = false;
+			auto f = false;
+
+			auto p = args::parser{};
+
+			p.command("cmd")
+				.option<bool>("-a", [&](auto v) { a = v; })
+				.option<bool>("-b", "--bb", [&](auto v) { b = v; })
+				.option<bool>("-c", "--cc", [&](auto v) { c = v; })
+				.option<bool>(args::required, "-d", [&](auto v) { d = v; })
+				.option<bool>(args::required, "-e", "--ee", [&](auto v) { e = v; })
+				.option<bool>(args::required, "-f", "--ff", [&](auto v) { f = v; });
+
+			p.parse(argc, argv);
+
+			ctl::expect_equal(a, true);
+			ctl::expect_equal(b, true);
+			ctl::expect_equal(c, true);
+			ctl::expect_equal(d, true);
+			ctl::expect_equal(e, true);
+			ctl::expect_equal(f, true);
+		});
+
+		it("command args", []{
+			const char* argv[] = {
+				"exec",
+				"cmd",
+				"true",
+				"true",
+				"true"
+			};
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto a = false;
+			auto b = false;
+			auto c = false;
+
+			auto p = args::parser{};
+
+			p.command("cmd")
+				.positional(&a)
+				.positional("b", &b)
+				.positional(args::required, "c", &c);
+
+			p.parse(argc, argv);
+
+			ctl::expect_equal(a, true);
+			ctl::expect_equal(b, true);
+			ctl::expect_equal(c, true);
+		});
+
+		it("command args handlers", []{
+			const char* argv[] = {
+				"exec",
+				"cmd",
+				"true",
+				"true",
+				"true"
+			};
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto a = false;
+			auto b = false;
+			auto c = false;
+
+			auto p = args::parser{};
+
+			p.command("cmd")
+				.positional<bool>([&](auto v) { a = v; })
+				.positional<bool>("b", [&](auto v) { b = v; })
+				.positional<bool>(args::required, "c", [&](auto v) { c = v; });
+
+			p.parse(argc, argv);
+
+			ctl::expect_equal(a, true);
+			ctl::expect_equal(b, true);
+			ctl::expect_equal(c, true);
+		});
+
+		it("command rest", []{
+			const char* argv[] = {
+				"exec",
+				"cmd",
+				"0",
+				"1"
+			};
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto r = std::vector<int>{};
+			auto p = args::parser{};
+
+			p.command("cmd")
+				.rest(&r);
+
+			p.parse(argc, argv);
+
+			ctl::expect_equal(r, {0, 1});
+		});
+
+		it("command rest handler", []{
+			const char* argv[] = {
+				"exec",
+				"cmd",
+				"0",
+				"1"
+			};
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto r = std::vector<int>{};
+			auto p = args::parser{};
+
+			p.command("cmd")
+				.rest<bool>([&](auto v) { r.push_back(v); });
+
+			p.parse(argc, argv);
+
+			ctl::expect_equal(r, {0, 1});
+		});
+
+		it("command named rest", []{
+			const char* argv[] = {
+				"exec",
+				"cmd",
+				"0",
+				"1"
+			};
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto r = std::vector<int>{};
+			auto p = args::parser{};
+
+			p.command("cmd")
+				.rest("rest", &r);
+
+			p.parse(argc, argv);
+
+			ctl::expect_equal(r, {0, 1});
+		});
+
+		it("command named rest handler", []{
+			const char* argv[] = {
+				"exec",
+				"cmd",
+				"0",
+				"1"
+			};
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto r = std::vector<int>{};
+			auto p = args::parser{};
+
+			p.command("cmd")
+				.rest<bool>("rest", [&](auto v) { r.push_back(v); });
+
+			p.parse(argc, argv);
+
+			ctl::expect_equal(r, {0, 1});
+		});
+
+		it("command required named rest", []{
+			const char* argv[] = {
+				"exec",
+				"cmd",
+				"0",
+				"1"
+			};
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto r = std::vector<int>{};
+			auto p = args::parser{};
+
+			p.command("cmd")
+				.rest(args::required, "rest", &r);
+
+			p.parse(argc, argv);
+
+			ctl::expect_equal(r, {0, 1});
+		});
+
+		it("command required named rest handler", []{
+			const char* argv[] = {
+				"exec",
+				"cmd",
+				"0",
+				"1"
+			};
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto r = std::vector<int>{};
+			auto p = args::parser{};
+
+			p.command("cmd")
+				.rest<bool>(args::required, "rest", [&](auto v) { r.push_back(v); });
+
+			p.parse(argc, argv);
+
+			ctl::expect_equal(r, {0, 1});
 		});
 	});
 }

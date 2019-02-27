@@ -351,21 +351,21 @@ namespace {
 
 		template<typename T, typename F>
 		command_internal& rest(F handler) {
-			auto arg = create_arg_with_handler(handler);
+			auto arg = create_arg_with_handler<T, F>(handler);
 			this->rest_args = arg;
 			return *this;
 		}
 
 		template<typename T, typename F>
 		command_internal& rest(std::string name, F handler) {
-			auto arg = create_arg_with_handler(name, handler);
+			auto arg = create_arg_with_handler<T, F>(name, handler);
 			this->rest_args = arg;
 			return *this;
 		}
 
 		template<typename T, typename F>
 		command_internal& rest(required_c, std::string name, F handler) {
-			auto arg = create_arg_with_handler(name, handler);
+			auto arg = create_arg_with_handler<T, F>(name, handler);
 			arg.required = true;
 			this->rest_args = arg;
 			return *this;
@@ -615,21 +615,21 @@ namespace args {
 
 		template<typename T, typename F>
 		parser& rest(F handler) {
-			auto arg = create_arg_with_handler(handler);
+			auto arg = create_arg_with_handler<T, F>(handler);
 			this->rest_args = arg;
 			return *this;
 		}
 
 		template<typename T, typename F>
 		parser& rest(std::string name, F handler) {
-			auto arg = create_arg_with_handler(name, handler);
+			auto arg = create_arg_with_handler<T, F>(name, handler);
 			this->rest_args = arg;
 			return *this;
 		}
 
 		template<typename T, typename F>
 		parser& rest(required_c, std::string name, F handler) {
-			auto arg = create_arg_with_handler(name, handler);
+			auto arg = create_arg_with_handler<T, F>(name, handler);
 			arg.required = true;
 			this->rest_args = arg;
 			return *this;
