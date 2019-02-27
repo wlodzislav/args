@@ -126,11 +126,11 @@ namespace {
 		(*destination)[k] = v;
 	}
 
-	class required_c {};
 }
 
 namespace args {
-	const auto required = required_c{};
+	class required_t {};
+	const auto required = required_t{};
 
 	struct option {
 		std::string short_name;
@@ -158,7 +158,7 @@ namespace args {
 			parse_fun([=](std::string value) { parse_value(value, destination); }) {}
 
 		template<typename T>
-		option(required_c, std::string name, T* destination)
+		option(required_t, std::string name, T* destination)
 			: short_name(is_short_option(name) ? name : ""),
 			long_name(is_long_option(name) ? name : ""),
 			non_conventional(is_non_conventional(name) ? name : ""),
@@ -179,7 +179,7 @@ namespace args {
 			parse_fun([=](std::string value) { parse_value(value, destination); }) {}
 
 		template<typename T>
-		option(required_c, std::string short_name, std::string long_name, T* destination)
+		option(required_t, std::string short_name, std::string long_name, T* destination)
 			: short_name(is_short_option(short_name) ? short_name : ""),
 			long_name(is_long_option(long_name) ? long_name : ""),
 			required(true),
@@ -241,7 +241,7 @@ namespace {
 			parse_fun(parse) {}
 
 		template <typename T>
-		arg_internal(required_c, std::string name, T parse)
+		arg_internal(args::required_t, std::string name, T parse)
 			: name(name),
 			required(true),
 			parse_fun(parse) {}
@@ -315,7 +315,7 @@ namespace {
 		}
 
 		template<typename T>
-		command_internal& positional(required_c, std::string name, T* destination) {
+		command_internal& positional(args::required_t, std::string name, T* destination) {
 			this->args.emplace_back(args::required, name, [=](std::string value) { parse_value(value, destination); });
 			return *this;
 		}
@@ -335,7 +335,7 @@ namespace {
 		}
 
 		template<typename T, typename F>
-		command_internal& positional(required_c, std::string name, F handler) {
+		command_internal& positional(args::required_t, std::string name, F handler) {
 			auto arg = create_arg_with_handler<T, F>(name, handler);
 			arg.required = true;
 			this->args.push_back(arg);
@@ -355,7 +355,7 @@ namespace {
 		}
 
 		template<typename T>
-		command_internal& rest(required_c, std::string name, T* destination) {
+		command_internal& rest(args::required_t, std::string name, T* destination) {
 			this->rest_args = {args::required, name, [=](std::string value) { parse_value(value, destination); }};
 			return *this;
 		}
@@ -375,7 +375,7 @@ namespace {
 		}
 
 		template<typename T, typename F>
-		command_internal& rest(required_c, std::string name, F handler) {
+		command_internal& rest(args::required_t, std::string name, F handler) {
 			auto arg = create_arg_with_handler<T, F>(name, handler);
 			arg.required = true;
 			this->rest_args = arg;
@@ -394,7 +394,7 @@ namespace {
 		}
 
 		template<typename T>
-		command_internal& option(required_c, std::string name, T* destination) {
+		command_internal& option(args::required_t, std::string name, T* destination) {
 			this->options.emplace_back(args::required, name, destination);
 			return *this;
 		}
@@ -407,7 +407,7 @@ namespace {
 		}
 
 		template<typename T, typename F>
-		command_internal& option(required_c, std::string name, F handler) {
+		command_internal& option(args::required_t, std::string name, F handler) {
 			auto option = create_option_with_handler<T, F>(name, handler);
 			option.required = true;
 			this->options.push_back(option);
@@ -421,7 +421,7 @@ namespace {
 		}
 
 		template<typename T>
-		command_internal& option(required_c, std::string short_name, std::string long_name, T* destination) {
+		command_internal& option(args::required_t, std::string short_name, std::string long_name, T* destination) {
 			this->options.emplace_back(args::required, short_name, long_name, destination);
 			return *this;
 		}
@@ -434,7 +434,7 @@ namespace {
 		}
 
 		template<typename T, typename F>
-		command_internal& option(required_c, std::string short_name, std::string long_name, F handler) {
+		command_internal& option(args::required_t, std::string short_name, std::string long_name, F handler) {
 			auto option = create_option_with_handler<T, F>(short_name, long_name, handler);
 			option.required = true;
 			this->options.push_back(option);
@@ -579,7 +579,7 @@ namespace args {
 		}
 
 		template<typename T>
-		parser& positional(required_c, std::string name, T* destination) {
+		parser& positional(required_t, std::string name, T* destination) {
 			this->args.emplace_back(required, name, [=](std::string value) { parse_value(value, destination); });
 			return *this;
 		}
@@ -599,7 +599,7 @@ namespace args {
 		}
 
 		template<typename T, typename F>
-		parser& positional(required_c, std::string name, F handler) {
+		parser& positional(required_t, std::string name, F handler) {
 			auto arg = create_arg_with_handler<T, F>(name, handler);
 			arg.required = true;
 			this->args.push_back(arg);
@@ -619,7 +619,7 @@ namespace args {
 		}
 
 		template<typename T>
-		parser& rest(required_c, std::string name, T* destination) {
+		parser& rest(required_t, std::string name, T* destination) {
 			this->rest_args = {required, name, [=](std::string value) { parse_value(value, destination); }};
 			return *this;
 		}
@@ -639,7 +639,7 @@ namespace args {
 		}
 
 		template<typename T, typename F>
-		parser& rest(required_c, std::string name, F handler) {
+		parser& rest(required_t, std::string name, F handler) {
 			auto arg = create_arg_with_handler<T, F>(name, handler);
 			arg.required = true;
 			this->rest_args = arg;
@@ -658,7 +658,7 @@ namespace args {
 		}
 
 		template<typename T>
-		parser& option(required_c, std::string name, T* destination) {
+		parser& option(required_t, std::string name, T* destination) {
 			this->options.emplace_back(required, name, destination);
 			return *this;
 		}
@@ -671,7 +671,7 @@ namespace args {
 		}
 
 		template<typename T, typename F>
-		parser& option(required_c, std::string name, F handler) {
+		parser& option(required_t, std::string name, F handler) {
 			auto option = create_option_with_handler<T, F>(name, handler);
 			option.required = true;
 			this->options.push_back(option);
@@ -685,7 +685,7 @@ namespace args {
 		}
 
 		template<typename T>
-		parser& option(required_c, std::string short_name, std::string long_name, T* destination) {
+		parser& option(required_t, std::string short_name, std::string long_name, T* destination) {
 			this->options.emplace_back(required, short_name, long_name, destination);
 			return *this;
 		}
@@ -698,7 +698,7 @@ namespace args {
 		}
 
 		template<typename T, typename F>
-		parser& option(required_c, std::string short_name, std::string long_name, F handler) {
+		parser& option(required_t, std::string short_name, std::string long_name, F handler) {
 			auto option = create_option_with_handler<T, F>(short_name, long_name, handler);
 			option.required = true;
 			this->options.push_back(option);
