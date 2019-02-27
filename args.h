@@ -52,7 +52,7 @@ namespace {
 	std::enable_if_t<is_stringstreamable<T>::value>
 	parse_value(std::string value, T* destination) {
 		if (!value.empty()) {
-			std::stringstream ss(value);
+			auto ss = std::stringstream{value};
 			ss >> *destination;
 			if (ss.fail()) {
 				throw std::logic_error("Can't parse \""s + value + "\"."s);
@@ -85,13 +85,13 @@ namespace {
 	>
 	parse_value(std::string value, T* destination) {
 		if (!value.empty()) {
-			std::stringstream ss(value);
+			auto ss = std::stringstream{value};
 			typename T::value_type c;
 			ss >> c;
 			if (ss.fail()) {
 				throw std::logic_error("Can't parse \""s + value + "\"."s);
 			}
-			destination->insert(destination->end(), c);
+			destination->insert(std::end(*destination), c);
 		}
 	}
 
@@ -109,7 +109,7 @@ namespace {
 
 		auto k_str = value.substr(0, eq_pos);
 		typename T::key_type k;
-		std::stringstream k_stream(k_str);
+		auto k_stream = std::stringstream{k_str};
 		k_stream >> k;
 		if (k_stream.fail()) {
 			throw std::logic_error("Can't parse key in pair \""s + value + "\"."s);
@@ -117,7 +117,7 @@ namespace {
 
 		auto v_str = value.substr(eq_pos + 1);
 		typename T::mapped_type v;
-		std::stringstream v_stream(v_str);
+		auto v_stream = std::stringstream{v_str};
 		v_stream >> v;
 		if (v_stream.fail()) {
 			throw std::logic_error("Can't parse value in pair \""s + value + "\"."s);
@@ -395,8 +395,8 @@ namespace args {
 
 		void parse(int argc, const char** argv) {
 			auto args = std::vector<std::string>{};
-			for (const char** arg = argv + 1; arg < argv + argc; arg++) {
-				args.push_back(std::string{*arg});
+			for (auto arg = argv + 1; arg < argv + argc; arg++) {
+				args.emplace_back(*arg);
 			}
 
 			auto command_it = std::end(this->commands);

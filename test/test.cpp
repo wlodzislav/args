@@ -77,15 +77,16 @@ int main() {
 				"exec",
 				"-s"
 			};
-			bool s = false;
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto s = false;
 			args::options options = {
 				{"-s", &s}
 			};
 
-			const int argc = std::distance(std::begin(argv), std::end(argv));
 			args::parse(argc, argv, options);
 
-			ctl::expect_ok(s);
+			ctl::expect_equal(s, true);
 		});
 
 		it("grouped short flags, -rf", []{
@@ -93,18 +94,19 @@ int main() {
 				"exec",
 				"-rf"
 			};
-			bool r = false;
-			bool f = false;
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto r = false;
+			auto f = false;
 			args::options options = {
 				{"-r", &r},
 				{"-f", &f}
 			};
 
-			const int argc = std::distance(std::begin(argv), std::end(argv));
 			args::parse(argc, argv, options);
 
-			ctl::expect_ok(r);
-			ctl::expect_ok(f);
+			ctl::expect_equal(r, true);
+			ctl::expect_equal(f, true);
 		});
 
 		it("short without space, -s1", []{
@@ -112,15 +114,16 @@ int main() {
 				"./exec",
 				"-s1"
 			};
-			bool s = false;
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto s = false;
 			args::options options = {
 				{"-s", &s}
 			};
 
-			const int argc = std::distance(std::begin(argv), std::end(argv));
 			args::parse(argc, argv, options);
 
-			ctl::expect_ok(s);
+			ctl::expect_equal(s, true);
 		});
 
 		it("short with value, -s 1", []{
@@ -129,15 +132,16 @@ int main() {
 				"-s",
 				"1"
 			};
-			bool s = false;
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto s = false;
 			args::options options = {
 				{"-s", &s}
 			};
 
-			const int argc = std::distance(std::begin(argv), std::end(argv));
 			args::parse(argc, argv, options);
 
-			ctl::expect_ok(s);
+			ctl::expect_equal(s, true);
 		});
 
 		it("short = value, -s=1", []{
@@ -145,15 +149,16 @@ int main() {
 				"./exec",
 				"-s=1"
 			};
-			bool s = false;
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto s = false;
 			args::options options = {
 				{"-s", &s}
 			};
 
-			const int argc = std::distance(std::begin(argv), std::end(argv));
 			args::parse(argc, argv, options);
 
-			ctl::expect_ok(s);
+			ctl::expect_equal(s, true);
 		});
 
 		it("long flag, --long", []{
@@ -161,15 +166,16 @@ int main() {
 				"./exec",
 				"--long"
 			};
-			bool s = false;
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto s = false;
 			args::options options = {
 				{"--long", &s}
 			};
 
-			const int argc = std::distance(std::begin(argv), std::end(argv));
 			args::parse(argc, argv, options);
 
-			ctl::expect_ok(s);
+			ctl::expect_equal(s, true);
 		});
 
 		it("long with value, --long 1", []{
@@ -178,15 +184,16 @@ int main() {
 				"--long",
 				"1"
 			};
-			bool s = false;
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto s = false;
 			args::options options = {
 				{"--long", &s}
 			};
 
-			const int argc = std::distance(std::begin(argv), std::end(argv));
 			args::parse(argc, argv, options);
 
-			ctl::expect_ok(s);
+			ctl::expect_equal(s, true);
 		});
 
 		it("long = value, --long=1", []{
@@ -194,15 +201,16 @@ int main() {
 				"./exec",
 				"--long=1"
 			};
-			bool s = false;
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto s = false;
 			args::options options = {
 				{"--long", &s}
 			};
 
-			const int argc = std::distance(std::begin(argv), std::end(argv));
 			args::parse(argc, argv, options);
 
-			ctl::expect_ok(s);
+			ctl::expect_equal(s, true);
 		});
 
 		it("non conventional", []{
@@ -213,6 +221,8 @@ int main() {
 				"value",
 				"+fb=1",
 			};
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
 			auto frtti = false;
 			auto fnorrtti = ""s;
 			auto fb = 0;
@@ -222,7 +232,6 @@ int main() {
 				{"+fb", &fb}
 			};
 
-			const int argc = std::distance(std::begin(argv), std::end(argv));
 			args::parse(argc, argv, options);
 
 			ctl::expect_equal(frtti, true);
@@ -237,6 +246,8 @@ int main() {
 				"--long=1",
 				"123.123"
 			};
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
 			auto s = false;
 			auto arg1 = ""s;
 			auto arg2 = 0.0;
@@ -246,10 +257,9 @@ int main() {
 				.positional(&arg2)
 				.option("--long", &s);
 
-			const int argc = std::distance(std::begin(argv), std::end(argv));
 			p.parse(argc, argv);
 
-			ctl::expect_ok(s);
+			ctl::expect_equal(s, true);
 			ctl::expect_equal(arg1, "arg1"s);
 			ctl::expect_equal(arg2, 123.123);
 		});
@@ -264,6 +274,8 @@ int main() {
 				"b",
 				"c"
 			};
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
 			auto s = false;
 			auto arg1 = ""s;
 			auto arg2 = 0.0;
@@ -275,10 +287,9 @@ int main() {
 				.rest(&rest)
 				.option("--long", &s);
 
-			const int argc = std::distance(std::begin(argv), std::end(argv));
 			p.parse(argc, argv);
 
-			ctl::expect_ok(s);
+			ctl::expect_equal(s, true);
 			ctl::expect_equal(arg1, "arg1"s);
 			ctl::expect_equal(arg2, 123.123);
 			ctl::expect_equal(rest, {"a", "b", "c"});
@@ -295,6 +306,8 @@ int main() {
 				"b",
 				"c"
 			};
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
 			auto s = false;
 			auto arg1 = ""s;
 			auto arg2 = ""s;
@@ -306,7 +319,6 @@ int main() {
 				.rest(&rest)
 				.option("--long", &s);
 
-			const int argc = std::distance(std::begin(argv), std::end(argv));
 			p.parse(argc, argv);
 
 			ctl::expect_equal(s, false);
@@ -329,15 +341,16 @@ int main() {
 				"2"
 
 			};
-			bool s = false;
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto s = false;
 			auto l = ""s;
-			std::vector<int> i = {};
+			auto i = std::vector<int>{};
 			auto p = args::parser{}
 				.option<bool>("-s", "--short", [&](auto v) { s = v; })
 				.option<std::string>("--long", [&](auto v) { l = v; })
 				.option<int>("-i", [&](auto v) { i.push_back(v); });
 
-			const int argc = std::distance(std::begin(argv), std::end(argv));
 			p.parse(argc, argv);
 
 			ctl::expect_equal(s, true);
@@ -354,6 +367,8 @@ int main() {
 				"b",
 				"c"
 			};
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
 			auto arg1 = ""s;
 			auto arg2 = 0.0;
 			auto rest = std::vector<std::string>{};
@@ -363,7 +378,6 @@ int main() {
 				.positional(&arg2)
 				.rest(&rest);
 
-			const int argc = std::distance(std::begin(argv), std::end(argv));
 			p.parse(argc, argv);
 
 			ctl::expect_equal(arg1, "arg1"s);
@@ -378,6 +392,8 @@ int main() {
 					"l",
 					"--long",
 				};
+				const int argc = std::distance(std::begin(argv), std::end(argv));
+
 				auto s = false;
 				auto list_called = false;
 
@@ -386,10 +402,9 @@ int main() {
 					.option("--long", &s)
 					.action([&]{ list_called = true; });
 
-				const int argc = std::distance(std::begin(argv), std::end(argv));
 				p.parse(argc, argv);
 
-				ctl::expect_ok(s);
+				ctl::expect_equal(s, true);
 				ctl::expect_ok(list_called);
 			});
 
@@ -399,6 +414,8 @@ int main() {
 					"list",
 					"--long",
 				};
+				const int argc = std::distance(std::begin(argv), std::end(argv));
+
 				auto s = false;
 				auto list_called = false;
 
@@ -407,10 +424,9 @@ int main() {
 					.option("--long", &s)
 					.action([&]{ list_called = true; });
 
-				const int argc = std::distance(std::begin(argv), std::end(argv));
 				p.parse(argc, argv);
 
-				ctl::expect_ok(s);
+				ctl::expect_equal(s, true);
 				ctl::expect_ok(list_called);
 			});
 
@@ -423,6 +439,8 @@ int main() {
 					"arg3",
 					"arg4",
 				};
+				const int argc = std::distance(std::begin(argv), std::end(argv));
+
 				auto arg1 = ""s;
 				auto arg2 = ""s;
 				auto rest = std::vector<std::string>{};
@@ -435,7 +453,6 @@ int main() {
 					.rest(&rest)
 					.action([&]{ list_called = true; });
 
-				const int argc = std::distance(std::begin(argv), std::end(argv));
 				p.parse(argc, argv);
 
 				ctl::expect_equal(arg1, "arg1"s);
@@ -453,6 +470,8 @@ int main() {
 					"garg1",
 					"garg2",
 				};
+				const int argc = std::distance(std::begin(argv), std::end(argv));
+
 				auto arg1 = ""s;
 				auto arg2 = ""s;
 				auto garg1 = ""s;
@@ -468,7 +487,6 @@ int main() {
 					.positional(&arg2)
 					.action([&]{ list_called = true; });
 
-				const int argc = std::distance(std::begin(argv), std::end(argv));
 				p.parse(argc, argv);
 
 				ctl::expect_equal(arg1, "arg1"s);
@@ -491,11 +509,12 @@ int main() {
 					"1",
 					"-i",
 					"2"
-
 				};
-				bool s = false;
+				const int argc = std::distance(std::begin(argv), std::end(argv));
+
+				auto s = false;
 				auto l = ""s;
-				std::vector<int> i = {};
+				auto i = std::vector<int>{};
 				auto p = args::parser{};
 
 				p.command("cmd")
@@ -503,7 +522,6 @@ int main() {
 					.option<std::string>("--long", [&](auto v) { l = v; })
 					.option<int>("-i", [&](auto v) { i.push_back(v); });
 
-				const int argc = std::distance(std::begin(argv), std::end(argv));
 				p.parse(argc, argv);
 
 				ctl::expect_equal(s, true);
@@ -521,6 +539,8 @@ int main() {
 					"b",
 					"c"
 				};
+				const int argc = std::distance(std::begin(argv), std::end(argv));
+
 				auto arg1 = ""s;
 				auto arg2 = 0.0;
 				auto rest = std::vector<std::string>{};
@@ -531,7 +551,6 @@ int main() {
 					.positional(&arg2)
 					.rest(&rest);
 
-				const int argc = std::distance(std::begin(argv), std::end(argv));
 				p.parse(argc, argv);
 
 				ctl::expect_equal(arg1, "arg1"s);
@@ -547,17 +566,18 @@ int main() {
 					"-s=on",
 					"--long=str"
 				};
-				bool s = false;
-				std::string l = "";
+				const int argc = std::distance(std::begin(argv), std::end(argv));
+
+				auto s = false;
+				auto l = ""s;
 				args::options options = {
 					{"-s", &s},
 					{"--long", &l}
 				};
 
-				const int argc = std::distance(std::begin(argv), std::end(argv));
 				args::parse(argc, argv, options);
 
-				ctl::expect_ok(s);
+				ctl::expect_equal(s, true);
 				ctl::expect_equal(l, "str"s);
 			});
 
@@ -569,17 +589,18 @@ int main() {
 					"--long",
 					"str"
 				};
-				bool s = false;
-				std::string l = "";
+				const int argc = std::distance(std::begin(argv), std::end(argv));
+
+				auto s = false;
+				auto l = ""s;
 				args::options options = {
 					{"-s", &s},
 					{"--long", &l}
 				};
 
-				const int argc = std::distance(std::begin(argv), std::end(argv));
 				args::parse(argc, argv, options);
 
-				ctl::expect_ok(s);
+				ctl::expect_equal(s, true);
 				ctl::expect_equal(l, "str"s);
 			});
 
@@ -590,17 +611,18 @@ int main() {
 					"--long",
 					"str"
 				};
-				bool s = false;
-				std::string l = "";
+				const int argc = std::distance(std::begin(argv), std::end(argv));
+
+				auto s = false;
+				auto l = ""s;
 				args::options options = {
 					{"-s", &s},
 					{"--long", &l}
 				};
 
-				const int argc = std::distance(std::begin(argv), std::end(argv));
 				args::parse(argc, argv, options);
 
-				ctl::expect_ok(s);
+				ctl::expect_equal(s, true);
 				ctl::expect_equal(l, "str"s);
 			});
 
@@ -610,17 +632,18 @@ int main() {
 					"-s=1",
 					"--long=str"
 				};
-				bool s = false;
-				std::string l = "";
+				const int argc = std::distance(std::begin(argv), std::end(argv));
+
+				auto s = false;
+				auto l = ""s;
 				args::options options = {
 					{"-s", &s},
 					{"--long", &l}
 				};
 
-				const int argc = std::distance(std::begin(argv), std::end(argv));
 				args::parse(argc, argv, options);
 
-				ctl::expect_ok(s);
+				ctl::expect_equal(s, true);
 				ctl::expect_equal(l, "str"s);
 			});
 		});
@@ -633,30 +656,32 @@ int main() {
 					"./exec",
 					"-s"
 				};
-				bool s = false;
+				const int argc = std::distance(std::begin(argv), std::end(argv));
+
+				auto s = false;
 				args::options options = {
 					{"-s", &s}
 				};
 
-				const int argc = std::distance(std::begin(argv), std::end(argv));
 				args::parse(argc, argv, options);
 
-				ctl::expect_ok(s);
+				ctl::expect_equal(s, true);
 			});
 
 			it("no flag", []{
 				const char* argv[] = {
 					"./exec"
 				};
-				bool s = false;
+				const int argc = std::distance(std::begin(argv), std::end(argv));
+
+				auto s = false;
 				args::options options = {
 					{"-s", &s}
 				};
 
-				const int argc = std::distance(std::begin(argv), std::end(argv));
 				args::parse(argc, argv, options);
 
-				ctl::expect_fail(s);
+				ctl::expect_equal(s, false);
 			});
 
 			it("-s 1", []{
@@ -665,15 +690,16 @@ int main() {
 					"-s",
 					"1"
 				};
-				bool s = false;
+				const int argc = std::distance(std::begin(argv), std::end(argv));
+
+				auto s = false;
 				args::options options = {
 					{"-s", &s}
 				};
 
-				const int argc = std::distance(std::begin(argv), std::end(argv));
 				args::parse(argc, argv, options);
 
-				ctl::expect_ok(s);
+				ctl::expect_equal(s, true);
 			});
 
 			it("-s 0", []{
@@ -682,15 +708,16 @@ int main() {
 					"-s",
 					"0"
 				};
-				bool s = true;
+				const int argc = std::distance(std::begin(argv), std::end(argv));
+
+				auto s = true;
 				args::options options = {
 					{"-s", &s}
 				};
 
-				const int argc = std::distance(std::begin(argv), std::end(argv));
 				args::parse(argc, argv, options);
 
-				ctl::expect_fail(s);
+				ctl::expect_equal(s, false);
 			});
 
 			it("-s true", []{
@@ -699,15 +726,16 @@ int main() {
 					"-s",
 					"true"
 				};
-				bool s = false;
+				const int argc = std::distance(std::begin(argv), std::end(argv));
+
+				auto s = false;
 				args::options options = {
 					{"-s", &s}
 				};
 
-				const int argc = std::distance(std::begin(argv), std::end(argv));
 				args::parse(argc, argv, options);
 
-				ctl::expect_ok(s);
+				ctl::expect_equal(s, true);
 			});
 
 			it("-s false", []{
@@ -716,15 +744,16 @@ int main() {
 					"-s",
 					"false"
 				};
-				bool s = true;
+				const int argc = std::distance(std::begin(argv), std::end(argv));
+
+				auto s = true;
 				args::options options = {
 					{"-s", &s}
 				};
 
-				const int argc = std::distance(std::begin(argv), std::end(argv));
 				args::parse(argc, argv, options);
 
-				ctl::expect_fail(s);
+				ctl::expect_equal(s, false);
 			});
 
 			it("-s on", []{
@@ -733,15 +762,16 @@ int main() {
 					"-s",
 					"on"
 				};
-				bool s = false;
+				const int argc = std::distance(std::begin(argv), std::end(argv));
+
+				auto s = false;
 				args::options options = {
 					{"-s", &s}
 				};
 
-				const int argc = std::distance(std::begin(argv), std::end(argv));
 				args::parse(argc, argv, options);
 
-				ctl::expect_ok(s);
+				ctl::expect_equal(s, true);
 			});
 
 			it("-s off", []{
@@ -750,15 +780,16 @@ int main() {
 					"-s",
 					"off"
 				};
-				bool s = true;
+				const int argc = std::distance(std::begin(argv), std::end(argv));
+
+				auto s = true;
 				args::options options = {
 					{"-s", &s}
 				};
 
-				const int argc = std::distance(std::begin(argv), std::end(argv));
 				args::parse(argc, argv, options);
 
-				ctl::expect_fail(s);
+				ctl::expect_equal(s, false);
 			});
 
 			it("-s yes", []{
@@ -767,15 +798,16 @@ int main() {
 					"-s",
 					"yes"
 				};
-				bool s = false;
+				const int argc = std::distance(std::begin(argv), std::end(argv));
+
+				auto s = false;
 				args::options options = {
 					{"-s", &s}
 				};
 
-				const int argc = std::distance(std::begin(argv), std::end(argv));
 				args::parse(argc, argv, options);
 
-				ctl::expect_ok(s);
+				ctl::expect_equal(s, true);
 			});
 
 			it("-s no", []{
@@ -784,15 +816,16 @@ int main() {
 					"-s",
 					"no"
 				};
-				bool s = true;
+				const int argc = std::distance(std::begin(argv), std::end(argv));
+
+				auto s = true;
 				args::options options = {
 					{"-s", &s}
 				};
 
-				const int argc = std::distance(std::begin(argv), std::end(argv));
 				args::parse(argc, argv, options);
 
-				ctl::expect_fail(s);
+				ctl::expect_equal(s, false);
 			});
 
 			it("implicit --no-long for flags", []{
@@ -800,12 +833,13 @@ int main() {
 					"./exec",
 					"--no-long"
 				};
-				bool s = true;
+				const int argc = std::distance(std::begin(argv), std::end(argv));
+
+				auto s = true;
 				args::options options = {
 					{"--long", &s}
 				};
 
-				const int argc = std::distance(std::begin(argv), std::end(argv));
 				args::parse(argc, argv, options);
 
 				ctl::expect_equal(s, false);
@@ -818,12 +852,13 @@ int main() {
 				"-s",
 				"str"
 			};
-			std::string s = "";
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto s = ""s;
 			args::options options = {
 				{"-s", &s}
 			};
 
-			const int argc = std::distance(std::begin(argv), std::end(argv));
 			args::parse(argc, argv, options);
 
 			ctl::expect_equal(s, "str"s);
@@ -835,12 +870,13 @@ int main() {
 				"-i",
 				"1234567"
 			};
-			int i = 0;
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto i = 0;
 			args::options options = {
 				{"-i", &i}
 			};
 
-			const int argc = std::distance(std::begin(argv), std::end(argv));
 			args::parse(argc, argv, options);
 
 			ctl::expect_equal(i, 1234567);
@@ -852,12 +888,13 @@ int main() {
 				"-d",
 				"1234567.1234567"
 			};
-			double d = 0;
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto d = 0.0;
 			args::options options = {
 				{"-d", &d}
 			};
 
-			const int argc = std::distance(std::begin(argv), std::end(argv));
 			args::parse(argc, argv, options);
 
 			ctl::expect_equal(d, 1234567.1234567);
@@ -873,16 +910,16 @@ int main() {
 				"-v",
 				"2"
 			};
-			std::vector<int> actual = {};
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto v = std::vector<int>{};
 			args::options options = {
-				{"-v", &actual}
+				{"-v", &v}
 			};
 
-			const int argc = std::distance(std::begin(argv), std::end(argv));
 			args::parse(argc, argv, options);
 
-			std::vector expected = {0, 1, 2};
-			ctl::expect_equal(actual, expected);
+			ctl::expect_equal(v, {0, 1, 2});
 		});
 
 		it("std::list", []{
@@ -895,16 +932,16 @@ int main() {
 				"-v",
 				"2"
 			};
-			std::list<int> actual = {};
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto v = std::list<int>{};
 			args::options options = {
-				{"-v", &actual}
+				{"-v", &v}
 			};
 
-			const int argc = std::distance(std::begin(argv), std::end(argv));
 			args::parse(argc, argv, options);
 
-			std::list expected = {0, 1, 2};
-			ctl::expect_equal(actual, expected);
+			ctl::expect_equal(v, {0, 1, 2});
 		});
 
 		it("std::set", []{
@@ -917,16 +954,16 @@ int main() {
 				"-v",
 				"2"
 			};
-			std::set<int> actual = {};
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto v = std::set<int>{};
 			args::options options = {
-				{"-v", &actual}
+				{"-v", &v}
 			};
 
-			const int argc = std::distance(std::begin(argv), std::end(argv));
 			args::parse(argc, argv, options);
 
-			std::set expected = {0, 1, 2};
-			ctl::expect_equal(actual, expected);
+			ctl::expect_equal(v, {0, 1, 2});
 		});
 
 		it("std::unordered_set", []{
@@ -939,16 +976,16 @@ int main() {
 				"-v",
 				"2"
 			};
-			std::unordered_set<int> actual = {};
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto v = std::unordered_set<int>{};
 			args::options options = {
-				{"-v", &actual}
+				{"-v", &v}
 			};
 
-			const int argc = std::distance(std::begin(argv), std::end(argv));
 			args::parse(argc, argv, options);
 
-			std::unordered_set expected = {0, 1, 2};
-			ctl::expect_equal(actual, expected);
+			ctl::expect_equal(v, {0, 1, 2});
 		});
 
 		it("std::map", []{
@@ -959,19 +996,19 @@ int main() {
 				"-v",
 				"b=B"
 			};
-			std::map<std::string, std::string> actual = {};
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto v = std::map<std::string, std::string>{};
 			args::options options = {
-				{"-v", &actual}
+				{"-v", &v}
 			};
 
-			const int argc = std::distance(std::begin(argv), std::end(argv));
 			args::parse(argc, argv, options);
 
-			std::map<std::string, std::string> expected = {
+			ctl::expect_equal(v, {
 				{"a", "A"},
 				{"b", "B"},
-			};
-			ctl::expect_equal(actual, expected);
+			});
 		});
 
 		it("std::unordered_map", []{
@@ -982,19 +1019,19 @@ int main() {
 				"-v",
 				"b=B"
 			};
-			std::unordered_map<std::string, std::string> actual = {};
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto v = std::unordered_map<std::string, std::string>{};
 			args::options options = {
-				{"-v", &actual}
+				{"-v", &v}
 			};
 
-			const int argc = std::distance(std::begin(argv), std::end(argv));
 			args::parse(argc, argv, options);
 
-			std::unordered_map<std::string, std::string> expected = {
+			ctl::expect_equal(v, {
 				{"a", "A"},
 				{"b", "B"},
-			};
-			ctl::expect_equal(actual, expected);
+			});
 		});
 	});
 }
