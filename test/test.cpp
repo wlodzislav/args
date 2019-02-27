@@ -386,6 +386,58 @@ int main() {
 		});
 
 		describe("Commands", []{
+			it("command name flag", []{
+				const char* argv[] = {
+					"./exec",
+					"l"
+				};
+				const int argc = std::distance(std::begin(argv), std::end(argv));
+
+				auto list_called = false;
+
+				auto p = args::parser{};
+				p.command("l", &list_called);
+
+				p.parse(argc, argv);
+
+				ctl::expect_ok(list_called);
+			});
+
+			it("command name + alias flag", []{
+				const char* argv[] = {
+					"./exec",
+					"l"
+				};
+				const int argc = std::distance(std::begin(argv), std::end(argv));
+
+				auto list_called = false;
+
+				auto p = args::parser{};
+				p.command("l", "list", &list_called);
+
+				p.parse(argc, argv);
+
+				ctl::expect_ok(list_called);
+			});
+
+			it("command action", []{
+				const char* argv[] = {
+					"./exec",
+					"list"
+				};
+				const int argc = std::distance(std::begin(argv), std::end(argv));
+
+				auto list_called = false;
+
+				auto p = args::parser{};
+				p.command("l", "list")
+					.action([&]{ list_called = true; });
+
+				p.parse(argc, argv);
+
+				ctl::expect_ok(list_called);
+			});
+
 			it("command short + long name", []{
 				const char* argv[] = {
 					"./exec",

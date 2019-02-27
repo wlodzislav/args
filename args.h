@@ -280,15 +280,26 @@ namespace {
 		std::function<void ()> action_fun = 0;
 		const std::string name;
 		const std::string alias;
+		bool* destination = nullptr;
 
 		command_internal(const command_internal&) = default;
 
-		command_internal(std::string name)
+		command_internal(const std::string& name)
 			: name(name),
 			alias("") {}
 
-		command_internal(std::string name, std::string alias)
+		command_internal(const std::string& name, bool* destination)
 			: name(name),
+			destination(destination),
+			alias("") {}
+
+		command_internal(const std::string& name, const std::string& alias)
+			: name(name),
+			alias(alias) {}
+
+		command_internal(const std::string& name, const std::string& alias, bool* destination)
+			: name(name),
+			destination(destination),
 			alias(alias) {}
 
 		template<typename T>
@@ -702,6 +713,14 @@ namespace args {
 			return this->commands.emplace_back(name, alias);
 		}
 
+		command_internal& command(std::string name, bool* destination) {
+			return this->commands.emplace_back(name, destination);
+		}
+
+		command_internal& command(std::string name, std::string alias, bool* destination) {
+			return this->commands.emplace_back(name, alias, destination);
+		}
+
 		void parse(int argc, const char** argv) {
 			auto args = std::vector<std::string>{};
 			for (auto arg = argv + 1; arg < argv + argc; arg++) {
@@ -843,6 +862,9 @@ namespace args {
 					});
 					if (it != std::end(this->commands)) {
 						command_it = it;
+						if (command_it->destination) {
+							*command_it->destination = true;
+						}
 						continue;
 					}
 				}
