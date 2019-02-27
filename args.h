@@ -19,7 +19,6 @@
 #include <stdexcept>
 #include <iostream>
 #include <iterator>
-#include <optional>
 
 using namespace std::literals;
 
@@ -112,43 +111,40 @@ namespace {
 			(*destination)[k] = v;
 		}
 	}
-
-	template<typename T>
-	std::optional<typename T::value_type> find_by_name(const T& c, const std::string name) {
-		auto it = std::find_if(std::begin(c), std::end(c), [&](auto o) {
-			return o.short_name == name || o.long_name == name;
-		});
-		if (it != std::end(c)) {
-			return *it;
-		} else {
-			return {};
-		}
-	}
 }
 
 namespace args {
 	struct option {
-		const std::function<void (std::string)> parse;
 		const std::string short_name;
 		const std::string long_name;
-		const bool is_flag = false;
+		bool is_flag = false;
+		std::function<void (std::string)> parse;
 
 		option(const option&) = default;
+
+		option(std::string name)
+			: short_name(is_short_option(name) ? name : ""),
+			long_name(is_long_option(name) ? name : ""),
+			parse([=](std::string value) {}) {}
 
 		template<typename T>
 		option(std::string name, T* destination)
 			: short_name(is_short_option(name) ? name : ""),
 			long_name(is_long_option(name) ? name : ""),
 			is_flag(std::is_same<T, bool>::value),
-			parse([=](std::string value) { parse_value(value, destination);}) {}
+			parse([=](std::string value) { parse_value(value, destination); }) {}
+
+		option(std::string short_name, std::string long_name)
+			: short_name(is_short_option(short_name) ? short_name : ""),
+			long_name(is_long_option(long_name) ? long_name : ""),
+			parse([=](std::string value) {}) {}
 
 		template<typename T>
 		option(std::string short_name, std::string long_name, T* destination)
 			: short_name(is_short_option(short_name) ? short_name : ""),
 			long_name(is_long_option(long_name) ? long_name : ""),
 			is_flag(std::is_same<T, bool>::value),
-			parse([=](std::string value) { parse_value(value, destination);}) {}
-
+			parse([=](std::string value) { parse_value(value, destination); }) {}
 	};
 }
 
@@ -194,9 +190,36 @@ namespace {
 			return *this;
 		}
 
+		template<typename T, typename F>
+		command_internal& option(std::string name, F handler) {
+			auto option = args::option{name};
+			option.is_flag = std::is_same<T, bool>::value;
+			option.parse = [=](std::string value) {
+				T destination;
+				parse_value(value, &destination);
+				handler(destination);
+			};
+			this->options.push_back(option);
+			return *this;
+		}
+
 		template<typename T>
 		command_internal& option(std::string short_name, std::string long_name, T* destination) {
 			this->options.emplace_back(short_name, long_name, destination);
+			return *this;
+		}
+
+		template<typename T, typename F>
+		command_internal& option(std::string short_name, std::string long_name, F handler) {
+			auto option = args::option{short_name, long_name};
+			option.is_flag = std::is_same<T, bool>::value;
+			option.parse = [=](std::string value) {
+				T destination;
+				parse_value(value, &destination);
+				handler(destination);
+			};
+			this->options.push_back(option);
+			this->options.push_back(option);
 			return *this;
 		}
 
@@ -241,9 +264,36 @@ namespace args {
 			return *this;
 		}
 
+		template<typename T, typename F>
+		parser& option(std::string name, F handler) {
+			auto option = args::option{name};
+			option.is_flag = std::is_same<T, bool>::value;
+			option.parse = [=](std::string value) {
+				T destination;
+				parse_value(value, &destination);
+				handler(destination);
+			};
+			this->options.push_back(option);
+			return *this;
+		}
+
 		template<typename T>
 		parser& option(std::string short_name, std::string long_name, T* destination) {
 			this->options.emplace_back(short_name, long_name, destination);
+			return *this;
+		}
+
+		template<typename T, typename F>
+		parser& option(std::string short_name, std::string long_name, F handler) {
+			auto option = args::option{short_name, long_name};
+			option.is_flag = std::is_same<T, bool>::value;
+			option.parse = [=](std::string value) {
+				T destination;
+				parse_value(value, &destination);
+				handler(destination);
+			};
+			this->options.push_back(option);
+			this->options.push_back(option);
 			return *this;
 		}
 
@@ -375,7 +425,7 @@ namespace args {
 					} else if (this->rest_args) {
 						this->rest_args(*arg);
 					} else {
-						throw std::invalid_argument("Unexpected argument"s + *arg);
+						throw std::invalid_argument("Unexpected argument "s + *arg);
 					}
 				}
 			}

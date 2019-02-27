@@ -290,6 +290,36 @@ int main() {
 			ctl::expect_equal(rest, {"123.123", "a", "b", "c" });
 		});
 
+		it("lambda option handler", []{
+			const char* argv[] = {
+				"./exec",
+				"--long",
+				"str",
+				"-s",
+				"-i",
+				"0",
+				"-i",
+				"1",
+				"-i",
+				"2"
+
+			};
+			bool s = false;
+			auto l = ""s;
+			std::vector<int> i = {};
+			auto p = args::parser{}
+				.option<bool>("-s", "--short", [&](auto v) { s = v; })
+				.option<std::string>("--long", [&](auto v) { l = v; })
+				.option<int>("-i", [&](auto v) { i.push_back(v); });
+
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+			p.parse(argc, argv);
+
+			ctl::expect_equal(s, true);
+			ctl::expect_equal(l, "str"s);
+			ctl::expect_equal(i, {0, 1, 2});
+		});
+
 		describe("Commands", []{
 			it("command short + long name", []{
 				const char* argv[] = {
@@ -395,6 +425,38 @@ int main() {
 				ctl::expect_equal(garg1, "garg1"s);
 				ctl::expect_equal(grest, {"garg2"});
 				ctl::expect_ok(list_called);
+			});
+			it("lambda option handler", []{
+				const char* argv[] = {
+					"./exec",
+					"cmd",
+					"--long",
+					"str",
+					"-s",
+					"-i",
+					"0",
+					"-i",
+					"1",
+					"-i",
+					"2"
+
+				};
+				bool s = false;
+				auto l = ""s;
+				std::vector<int> i = {};
+				auto p = args::parser{};
+
+				p.command("cmd")
+					.option<bool>("-s", "--short", [&](auto v) { s = v; })
+					.option<std::string>("--long", [&](auto v) { l = v; })
+					.option<int>("-i", [&](auto v) { i.push_back(v); });
+
+				const int argc = std::distance(std::begin(argv), std::end(argv));
+				p.parse(argc, argv);
+
+				ctl::expect_equal(s, true);
+				ctl::expect_equal(l, "str"s);
+				ctl::expect_equal(i, {0, 1, 2});
 			});
 		});
 
