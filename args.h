@@ -268,6 +268,8 @@ namespace {
 }
 
 namespace args {
+	using options = std::vector<option>;
+
 	class invalid_option : public std::logic_error {
 		public:
 		const std::string option;

@@ -78,7 +78,7 @@ int main() {
 				"-s"
 			};
 			bool s = false;
-			std::vector<args::option> options = {
+			args::options options = {
 				{"-s", &s}
 			};
 
@@ -95,7 +95,7 @@ int main() {
 			};
 			bool r = false;
 			bool f = false;
-			std::vector<args::option> options = {
+			args::options options = {
 				{"-r", &r},
 				{"-f", &f}
 			};
@@ -113,7 +113,7 @@ int main() {
 				"-s1"
 			};
 			bool s = false;
-			std::vector<args::option> options = {
+			args::options options = {
 				{"-s", &s}
 			};
 
@@ -130,7 +130,7 @@ int main() {
 				"1"
 			};
 			bool s = false;
-			std::vector<args::option> options = {
+			args::options options = {
 				{"-s", &s}
 			};
 
@@ -146,7 +146,7 @@ int main() {
 				"-s=1"
 			};
 			bool s = false;
-			std::vector<args::option> options = {
+			args::options options = {
 				{"-s", &s}
 			};
 
@@ -162,7 +162,7 @@ int main() {
 				"--long"
 			};
 			bool s = false;
-			std::vector<args::option> options = {
+			args::options options = {
 				{"--long", &s}
 			};
 
@@ -179,7 +179,7 @@ int main() {
 				"1"
 			};
 			bool s = false;
-			std::vector<args::option> options = {
+			args::options options = {
 				{"--long", &s}
 			};
 
@@ -195,7 +195,7 @@ int main() {
 				"--long=1"
 			};
 			bool s = false;
-			std::vector<args::option> options = {
+			args::options options = {
 				{"--long", &s}
 			};
 
@@ -216,7 +216,7 @@ int main() {
 			auto frtti = false;
 			auto fnorrtti = ""s;
 			auto fb = 0;
-			std::vector<args::option> options = {
+			args::options options = {
 				{"-frtti", &frtti},
 				{"-fno-rtti", &fnorrtti},
 				{"+fb", &fb}
@@ -549,7 +549,7 @@ int main() {
 				};
 				bool s = false;
 				std::string l = "";
-				std::vector<args::option> options = {
+				args::options options = {
 					{"-s", &s},
 					{"--long", &l}
 				};
@@ -571,7 +571,7 @@ int main() {
 				};
 				bool s = false;
 				std::string l = "";
-				std::vector<args::option> options = {
+				args::options options = {
 					{"-s", &s},
 					{"--long", &l}
 				};
@@ -592,7 +592,7 @@ int main() {
 				};
 				bool s = false;
 				std::string l = "";
-				std::vector<args::option> options = {
+				args::options options = {
 					{"-s", &s},
 					{"--long", &l}
 				};
@@ -612,7 +612,7 @@ int main() {
 				};
 				bool s = false;
 				std::string l = "";
-				std::vector<args::option> options = {
+				args::options options = {
 					{"-s", &s},
 					{"--long", &l}
 				};
@@ -634,7 +634,7 @@ int main() {
 					"-s"
 				};
 				bool s = false;
-				std::vector<args::option> options = {
+				args::options options = {
 					{"-s", &s}
 				};
 
@@ -649,7 +649,7 @@ int main() {
 					"./exec"
 				};
 				bool s = false;
-				std::vector<args::option> options = {
+				args::options options = {
 					{"-s", &s}
 				};
 
@@ -666,7 +666,7 @@ int main() {
 					"1"
 				};
 				bool s = false;
-				std::vector<args::option> options = {
+				args::options options = {
 					{"-s", &s}
 				};
 
@@ -683,7 +683,7 @@ int main() {
 					"0"
 				};
 				bool s = true;
-				std::vector<args::option> options = {
+				args::options options = {
 					{"-s", &s}
 				};
 
@@ -700,7 +700,7 @@ int main() {
 					"true"
 				};
 				bool s = false;
-				std::vector<args::option> options = {
+				args::options options = {
 					{"-s", &s}
 				};
 
@@ -717,7 +717,7 @@ int main() {
 					"false"
 				};
 				bool s = true;
-				std::vector<args::option> options = {
+				args::options options = {
 					{"-s", &s}
 				};
 
@@ -734,7 +734,7 @@ int main() {
 					"on"
 				};
 				bool s = false;
-				std::vector<args::option> options = {
+				args::options options = {
 					{"-s", &s}
 				};
 
@@ -751,7 +751,7 @@ int main() {
 					"off"
 				};
 				bool s = true;
-				std::vector<args::option> options = {
+				args::options options = {
 					{"-s", &s}
 				};
 
@@ -768,7 +768,7 @@ int main() {
 					"yes"
 				};
 				bool s = false;
-				std::vector<args::option> options = {
+				args::options options = {
 					{"-s", &s}
 				};
 
@@ -785,7 +785,7 @@ int main() {
 					"no"
 				};
 				bool s = true;
-				std::vector<args::option> options = {
+				args::options options = {
 					{"-s", &s}
 				};
 
@@ -801,7 +801,7 @@ int main() {
 					"--no-long"
 				};
 				bool s = true;
-				std::vector<args::option> options = {
+				args::options options = {
 					{"--long", &s}
 				};
 
@@ -819,7 +819,7 @@ int main() {
 				"str"
 			};
 			std::string s = "";
-			std::vector<args::option> options = {
+			args::options options = {
 				{"-s", &s}
 			};
 
@@ -836,7 +836,7 @@ int main() {
 				"1234567"
 			};
 			int i = 0;
-			std::vector<args::option> options = {
+			args::options options = {
 				{"-i", &i}
 			};
 
@@ -853,7 +853,7 @@ int main() {
 				"1234567.1234567"
 			};
 			double d = 0;
-			std::vector<args::option> options = {
+			args::options options = {
 				{"-d", &d}
 			};
 
@@ -874,7 +874,7 @@ int main() {
 				"2"
 			};
 			std::vector<int> actual = {};
-			std::vector<args::option> options = {
+			args::options options = {
 				{"-v", &actual}
 			};
 
@@ -896,7 +896,7 @@ int main() {
 				"2"
 			};
 			std::list<int> actual = {};
-			std::vector<args::option> options = {
+			args::options options = {
 				{"-v", &actual}
 			};
 
@@ -918,7 +918,7 @@ int main() {
 				"2"
 			};
 			std::set<int> actual = {};
-			std::vector<args::option> options = {
+			args::options options = {
 				{"-v", &actual}
 			};
 
@@ -940,7 +940,7 @@ int main() {
 				"2"
 			};
 			std::unordered_set<int> actual = {};
-			std::vector<args::option> options = {
+			args::options options = {
 				{"-v", &actual}
 			};
 
@@ -960,7 +960,7 @@ int main() {
 				"b=B"
 			};
 			std::map<std::string, std::string> actual = {};
-			std::vector<args::option> options = {
+			args::options options = {
 				{"-v", &actual}
 			};
 
@@ -983,7 +983,7 @@ int main() {
 				"b=B"
 			};
 			std::unordered_map<std::string, std::string> actual = {};
-			std::vector<args::option> options = {
+			args::options options = {
 				{"-v", &actual}
 			};
 
