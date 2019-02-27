@@ -261,6 +261,7 @@ namespace args {
 				args.push_back(std::string{*arg});
 			}
 
+			auto args_only = false;
 			auto positional_index = 0;
 			auto command_positional_index = 0;
 			auto command_it = std::end(this->commands);
@@ -280,7 +281,12 @@ namespace args {
 			};
 
 			for (auto arg = std::begin(args); arg != std::end(args); arg++) {
-				if (arg->starts_with('-')) {
+				if (*arg == "--"s) {
+					args_only = true;
+					continue;
+				}
+
+				if (!args_only && arg->starts_with('-')) {
 					auto option_it = find_option_if([&](auto o) {
 						return (!o.short_name.empty() && arg->starts_with(o.short_name))
 							|| (!o.long_name.empty() && arg->starts_with(o.long_name));
@@ -339,7 +345,7 @@ namespace args {
 						option_it->parse(arg->substr(2));
 					}
 				} else {
-					if (command_it == std::end(this->commands)) {
+					if (!args_only && command_it == std::end(this->commands)) {
 						auto it = std::find_if(std::begin(this->commands), std::end(this->commands), [&](auto c) {
 							return c.name == *arg || c.alias == *arg;
 						});

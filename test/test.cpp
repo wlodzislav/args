@@ -259,6 +259,37 @@ int main() {
 			ctl::expect_equal(rest, {"a", "b", "c"});
 		});
 
+		it("--", []{
+			const char* argv[] = {
+				"./exec",
+				"arg1",
+				"--",
+				"--long=1",
+				"123.123",
+				"a",
+				"b",
+				"c"
+			};
+			auto s = false;
+			auto arg1 = ""s;
+			auto arg2 = ""s;
+			auto rest = std::vector<std::string>{};
+
+			auto p = args::parser{}
+				.positional(&arg1)
+				.positional(&arg2)
+				.rest(&rest)
+				.option("--long", &s);
+
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+			p.parse(argc, argv);
+
+			ctl::expect_equal(s, false);
+			ctl::expect_equal(arg1, "arg1"s);
+			ctl::expect_equal(arg2, "--long=1"s);
+			ctl::expect_equal(rest, {"123.123", "a", "b", "c" });
+		});
+
 		describe("Commands", []{
 			it("command short + long name", []{
 				const char* argv[] = {
