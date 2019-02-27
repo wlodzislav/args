@@ -769,6 +769,22 @@ int main() {
 
 				ctl::expect_fail(s);
 			});
+
+			it("implicit --no-long for flags", []{
+				const char* argv[] = {
+					"./exec",
+					"--no-long"
+				};
+				bool s = true;
+				std::vector<args::option> options = {
+					{"--long", &s}
+				};
+
+				const int argc = std::distance(std::begin(argv), std::end(argv));
+				args::parse(argc, argv, options);
+
+				ctl::expect_equal(s, false);
+			});
 		});
 
 		it("std::string", []{

@@ -382,6 +382,17 @@ namespace args {
 							|| (!o.long_name.empty() && arg->starts_with(o.long_name));
 					});
 
+					if (option_it == std::end(this->options) && arg->starts_with("--no-")) {
+						auto name = "--"s + arg->substr(5);
+						option_it = find_option_if([&](auto o) {
+							return !o.long_name.empty() && o.long_name == name;
+						});
+
+						if (option_it == std::end(this->options) || !option_it->is_flag) {
+							option_it = std::end(this->options);
+						}
+					}
+
 					if (option_it == std::end(this->options)) {
 						throw std::invalid_argument("Invalid command line option \""s + *arg + "\".");
 					}
@@ -433,6 +444,8 @@ namespace args {
 							&& !option_it->is_flag) {
 
 						option_it->parse(arg->substr(2));
+					} else if (arg->starts_with("--no-")) {
+						option_it->parse("0");
 					}
 				} else {
 					if (!args_only && command_it == std::end(this->commands)) {
