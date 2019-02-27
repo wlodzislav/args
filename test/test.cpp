@@ -559,6 +559,140 @@ int main() {
 			});
 		});
 
+		describe("Required options", []{
+			it("name", []{
+				const char* argv[] = {
+					"./exec"
+				};
+				const int argc = std::distance(std::begin(argv), std::end(argv));
+
+				auto r = false;
+				auto p = args::parser{}
+					.option(args::required, "-r", &r);
+
+				auto catched = false;
+				try {
+					p.parse(argc, argv);
+				} catch (args::missing_option err) {
+					catched = true;
+					ctl::expect_equal(err.option, "-r"s);
+				}
+				ctl::expect_ok(catched);
+			});
+
+			it("short_name, long_name", []{
+				const char* argv[] = {
+					"./exec"
+				};
+				const int argc = std::distance(std::begin(argv), std::end(argv));
+
+				auto r = false;
+				auto p = args::parser{}
+					.option(args::required, "-r", "--required", &r);
+
+				auto catched = false;
+				try {
+					p.parse(argc, argv);
+				} catch (args::missing_option err) {
+					catched = true;
+					ctl::expect_equal(err.option, "-r, --required"s);
+				}
+				ctl::expect_ok(catched);
+			});
+
+			it("non-conventional", []{
+				const char* argv[] = {
+					"./exec"
+				};
+				const int argc = std::distance(std::begin(argv), std::end(argv));
+
+				auto r = false;
+				auto p = args::parser{}
+					.option(args::required, "-rd", &r);
+
+				auto catched = false;
+				try {
+					p.parse(argc, argv);
+				} catch (args::missing_option err) {
+					catched = true;
+					ctl::expect_equal(err.option, "-rd"s);
+				}
+				ctl::expect_ok(catched);
+			});
+
+			it("command + name", []{
+				const char* argv[] = {
+					"./exec",
+					"cmd"
+				};
+				const int argc = std::distance(std::begin(argv), std::end(argv));
+
+				auto r = false;
+				auto p = args::parser{};
+				
+				p.command("cmd")
+					.option(args::required, "-r", &r);
+
+				auto catched = false;
+				try {
+					p.parse(argc, argv);
+				} catch (args::missing_command_option err) {
+					catched = true;
+					ctl::expect_equal(err.command, "cmd"s);
+					ctl::expect_equal(err.option, "-r"s);
+				}
+				ctl::expect_ok(catched);
+			});
+
+			it("command + short_name, long_name", []{
+				const char* argv[] = {
+					"./exec",
+					"cmd"
+				};
+				const int argc = std::distance(std::begin(argv), std::end(argv));
+
+				auto r = false;
+				auto p = args::parser{};
+				
+				p.command("cmd")
+					.option(args::required, "-r", "--required", &r);
+
+				auto catched = false;
+				try {
+					p.parse(argc, argv);
+				} catch (args::missing_command_option err) {
+					catched = true;
+					ctl::expect_equal(err.command, "cmd"s);
+					ctl::expect_equal(err.option, "-r, --required"s);
+				}
+				ctl::expect_ok(catched);
+			});
+
+			it("command + non-conventional", []{
+				const char* argv[] = {
+					"./exec",
+					"cmd"
+				};
+				const int argc = std::distance(std::begin(argv), std::end(argv));
+
+				auto r = false;
+				auto p = args::parser{};
+				
+				p.command("cmd")
+					.option(args::required, "-rd", &r);
+
+				auto catched = false;
+				try {
+					p.parse(argc, argv);
+				} catch (args::missing_command_option err) {
+					catched = true;
+					ctl::expect_equal(err.command, "cmd"s);
+					ctl::expect_equal(err.option, "-rd"s);
+				}
+				ctl::expect_ok(catched);
+			});
+		});
+
 		describe("Mixed options", []{
 			it("exec -s=on --long=str", []{
 				const char* argv[] = {

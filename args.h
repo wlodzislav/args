@@ -125,15 +125,21 @@ namespace {
 
 		(*destination)[k] = v;
 	}
+
+	class required_c {};
 }
 
 namespace args {
+	const auto required = required_c{};
+
 	struct option {
-		const std::string short_name;
-		const std::string long_name;
-		const std::string non_conventional;
+		std::string short_name;
+		std::string long_name;
+		std::string non_conventional;
+		bool required = false;
 		bool is_flag = false;
-		std::function<void (std::string)> parse;
+		std::function<void (std::string)> parse_fun;
+		bool exists = false;
 
 		option(const option&) = default;
 
@@ -141,7 +147,7 @@ namespace args {
 			: short_name(is_short_option(name) ? name : ""),
 			long_name(is_long_option(name) ? name : ""),
 			non_conventional(is_non_conventional(name) ? name : ""),
-			parse([=](std::string value) {}) {}
+			parse_fun([=](std::string value) {}) {}
 
 		template<typename T>
 		option(std::string name, T* destination)
@@ -149,23 +155,72 @@ namespace args {
 			long_name(is_long_option(name) ? name : ""),
 			non_conventional(is_non_conventional(name) ? name : ""),
 			is_flag(std::is_same<T, bool>::value),
-			parse([=](std::string value) { parse_value(value, destination); }) {}
+			parse_fun([=](std::string value) { parse_value(value, destination); }) {}
+
+		template<typename T>
+		option(required_c, std::string name, T* destination)
+			: short_name(is_short_option(name) ? name : ""),
+			long_name(is_long_option(name) ? name : ""),
+			non_conventional(is_non_conventional(name) ? name : ""),
+			required(true),
+			is_flag(std::is_same<T, bool>::value),
+			parse_fun([=](std::string value) { parse_value(value, destination); }) {}
 
 		option(std::string short_name, std::string long_name)
 			: short_name(is_short_option(short_name) ? short_name : ""),
 			long_name(is_long_option(long_name) ? long_name : ""),
-			parse([=](std::string value) {}) {}
+			parse_fun([=](std::string value) {}) {}
 
 		template<typename T>
 		option(std::string short_name, std::string long_name, T* destination)
 			: short_name(is_short_option(short_name) ? short_name : ""),
 			long_name(is_long_option(long_name) ? long_name : ""),
 			is_flag(std::is_same<T, bool>::value),
-			parse([=](std::string value) { parse_value(value, destination); }) {}
+			parse_fun([=](std::string value) { parse_value(value, destination); }) {}
+
+		template<typename T>
+		option(required_c, std::string short_name, std::string long_name, T* destination)
+			: short_name(is_short_option(short_name) ? short_name : ""),
+			long_name(is_long_option(long_name) ? long_name : ""),
+			required(true),
+			is_flag(std::is_same<T, bool>::value),
+			parse_fun([=](std::string value) { parse_value(value, destination); }) {}
+
+		void parse(std::string value) {
+			this->parse_fun(value);
+			this->exists = true;
+		}
 	};
 }
 
 namespace {
+	template <typename T, typename F>
+	args::option create_option_with_handler(const std::string& short_name, const std::string& long_name, const std::string& non_conventional, F handler) {
+		auto option = args::option{short_name, long_name};
+		option.non_conventional = non_conventional;
+		option.is_flag = std::is_same<T, bool>::value;
+		option.parse_fun = [=](std::string value) {
+			T destination;
+			parse_value(value, &destination);
+			handler(destination);
+		};
+		return option;
+	}
+
+	template <typename T, typename F>
+	args::option create_option_with_handler(const std::string& name, F handler) {
+		auto short_name = is_short_option(name) ? name : ""s;
+		auto long_name = is_long_option(name) ? name : ""s;
+		auto non_conventional = is_non_conventional(name) ? name : ""s;
+		return create_option_with_handler<T, F>(short_name, long_name, non_conventional, handler);
+	}
+
+	template <typename T, typename F>
+	args::option create_option_with_handler(const std::string& short_name, const std::string& long_name, F handler) {
+		auto non_conventional =  "";
+		return create_option_with_handler<T, F>(short_name, long_name, non_conventional, handler);
+	}
+
 	struct command_internal {
 		std::vector<args::option> options = {};
 		std::vector<std::function<void (std::string)>> positional_args = {};
@@ -227,15 +282,23 @@ namespace {
 			return *this;
 		}
 
+		template<typename T>
+		command_internal& option(required_c, std::string name, T* destination) {
+			this->options.emplace_back(args::required, name, destination);
+			return *this;
+		}
+
 		template<typename T, typename F>
 		command_internal& option(std::string name, F handler) {
-			auto option = args::option{name};
-			option.is_flag = std::is_same<T, bool>::value;
-			option.parse = [=](std::string value) {
-				T destination;
-				parse_value(value, &destination);
-				handler(destination);
-			};
+			auto option = create_option_with_handler<T, F>(name, handler);
+			this->options.push_back(option);
+			return *this;
+		}
+
+		template<typename T, typename F>
+		command_internal& option(required_c, std::string name, F handler) {
+			auto option = create_option_with_handler<T, F>(name, handler);
+			option.required = true;
 			this->options.push_back(option);
 			return *this;
 		}
@@ -246,16 +309,23 @@ namespace {
 			return *this;
 		}
 
+		template<typename T>
+		command_internal& option(required_c, std::string short_name, std::string long_name, T* destination) {
+			this->options.emplace_back(args::required, short_name, long_name, destination);
+			return *this;
+		}
+
 		template<typename T, typename F>
 		command_internal& option(std::string short_name, std::string long_name, F handler) {
-			auto option = args::option{short_name, long_name};
-			option.is_flag = std::is_same<T, bool>::value;
-			option.parse = [=](std::string value) {
-				T destination;
-				parse_value(value, &destination);
-				handler(destination);
-			};
+			auto option = create_option_with_handler<T, F>(short_name, long_name, handler);
 			this->options.push_back(option);
+			return *this;
+		}
+
+		template<typename T, typename F>
+		command_internal& option(required_c, std::string short_name, std::string long_name, F handler) {
+			auto option = create_option_with_handler<T, F>(short_name, long_name, handler);
+			option.required = true;
 			this->options.push_back(option);
 			return *this;
 		}
@@ -265,6 +335,46 @@ namespace {
 			return *this;
 		}
 	};
+
+	std::string option_print_name(const args::option& option) {
+		auto name = ""s;
+		auto first = true;
+		if (!option.short_name.empty()) {
+			name += option.short_name;
+			first = false;
+		}
+		if (!option.long_name.empty()) {
+			if (!first) {
+				name += ", "s;
+			}
+			name += option.long_name;
+			first = false;
+		}
+		if (!option.non_conventional.empty()) {
+			if (!first) {
+				name += ", "s;
+			}
+			name += option.non_conventional;
+		}
+		return name;
+	}
+
+	std::string command_print_name(const command_internal& command) {
+		auto name = ""s;
+		auto first = true;
+		if (!command.name.empty()) {
+			name += command.name;
+			first = false;
+		}
+		if (!command.alias.empty()) {
+			if (!first) {
+				name += ", "s;
+			}
+			name += command.alias;
+		}
+		return name;
+	}
+
 }
 
 namespace args {
@@ -297,6 +407,24 @@ namespace args {
 		unexpecter_arg(std::string arg)
 			: logic_error("Unexpected argument \""s + arg + "\"."s),
 			arg(arg) {}
+	};
+
+	class missing_option : public std::logic_error {
+		public:
+		const std::string option;
+
+		missing_option(std::string option)
+			: logic_error("Option \""s + option + "\" is required."),
+			option(option) {}
+	};
+
+	class missing_command_option : public missing_option {
+		public:
+		const std::string command;
+
+		missing_command_option(std::string command, std::string option)
+			: missing_option(option),
+			command(command) {}
 	};
 
 	class parser {
@@ -352,15 +480,23 @@ namespace args {
 			return *this;
 		}
 
+		template<typename T>
+		parser& option(required_c, std::string name, T* destination) {
+			this->options.emplace_back(required, name, destination);
+			return *this;
+		}
+
 		template<typename T, typename F>
 		parser& option(std::string name, F handler) {
-			auto option = args::option{name};
-			option.is_flag = std::is_same<T, bool>::value;
-			option.parse = [=](std::string value) {
-				T destination;
-				parse_value(value, &destination);
-				handler(destination);
-			};
+			auto option = create_option_with_handler<T, F>(name, handler);
+			this->options.push_back(option);
+			return *this;
+		}
+
+		template<typename T, typename F>
+		parser& option(required_c, std::string name, F handler) {
+			auto option = create_option_with_handler<T, F>(name, handler);
+			option.required = true;
 			this->options.push_back(option);
 			return *this;
 		}
@@ -371,16 +507,23 @@ namespace args {
 			return *this;
 		}
 
+		template<typename T>
+		parser& option(required_c, std::string short_name, std::string long_name, T* destination) {
+			this->options.emplace_back(required, short_name, long_name, destination);
+			return *this;
+		}
+
 		template<typename T, typename F>
 		parser& option(std::string short_name, std::string long_name, F handler) {
-			auto option = args::option{short_name, long_name};
-			option.is_flag = std::is_same<T, bool>::value;
-			option.parse = [=](std::string value) {
-				T destination;
-				parse_value(value, &destination);
-				handler(destination);
-			};
+			auto option = create_option_with_handler<T, F>(short_name, long_name, handler);
 			this->options.push_back(option);
+			return *this;
+		}
+
+		template<typename T, typename F>
+		parser& option(required_c, std::string short_name, std::string long_name, F handler) {
+			auto option = create_option_with_handler<T, F>(short_name, long_name, handler);
+			option.required = true;
 			this->options.push_back(option);
 			return *this;
 		}
@@ -562,7 +705,23 @@ namespace args {
 				}
 			}
 
+			auto missing_option_it = std::find_if(std::begin(this->options), std::end(this->options), [](auto o) {
+				return o.required && !o.exists;
+			});
+
+			if (missing_option_it != std::end(this->options)) {
+				throw missing_option(option_print_name(*missing_option_it));
+			}
+
 			if (command_it != std::end(this->commands)) {
+				auto command_missing_option_it = std::find_if(std::begin(command_it->options), std::end(command_it->options), [](auto o) {
+					return o.required && !o.exists;
+				});
+
+				if (command_missing_option_it != std::end(command_it->options)) {
+					throw missing_command_option(command_print_name(*command_it), option_print_name(*command_missing_option_it));
+				}
+
 				if (command_it->action_fun) {
 					command_it->action_fun();
 				}
