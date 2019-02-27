@@ -221,10 +221,62 @@ namespace {
 		return create_option_with_handler<T, F>(short_name, long_name, non_conventional, handler);
 	}
 
+	struct arg_internal {
+		public:
+		std::string name;
+		bool required = false;
+		std::function<void (std::string)> parse_fun;
+		bool exists = false;
+
+		arg_internal(const arg_internal&) = default;
+		arg_internal() = default;
+
+		template <typename T>
+		arg_internal(T parse)
+			: parse_fun(parse) {}
+
+		template <typename T>
+		arg_internal(std::string name, T parse)
+			: name(name),
+			parse_fun(parse) {}
+
+		template <typename T>
+		arg_internal(required_c, std::string name, T parse)
+			: name(name),
+			required(true),
+			parse_fun(parse) {}
+
+		void parse(std::string value) {
+			this->parse_fun(value);
+			this->exists = true;
+		}
+	};
+
+	template <typename T, typename F>
+	arg_internal create_arg_with_handler(const std::string& name, F handler) {
+		auto arg = arg_internal{name, [=](std::string value) {
+			T destination;
+			parse_value(value, &destination);
+			handler(destination);
+		}};
+		return arg;
+	}
+
+	template <typename T, typename F>
+	arg_internal create_arg_with_handler(F handler) {
+		auto arg = arg_internal{[=](std::string value) {
+			T destination;
+			parse_value(value, &destination);
+			handler(destination);
+		}};
+		return arg;
+	}
+
+
 	struct command_internal {
 		std::vector<args::option> options = {};
-		std::vector<std::function<void (std::string)>> positional_args = {};
-		std::function<void (std::string)> rest_args = 0;
+		std::vector<arg_internal> args = {};
+		arg_internal rest_args = {};
 		std::function<void ()> action_fun = 0;
 		const std::string name;
 		const std::string alias;
@@ -241,33 +293,81 @@ namespace {
 
 		template<typename T>
 		command_internal& positional(T* destination) {
-			positional_args.push_back([=](std::string value) { parse_value(value, destination); });
+			this->args.emplace_back([=](std::string value) { parse_value(value, destination); });
+			return *this;
+		}
+
+		template<typename T>
+		command_internal& positional(std::string name, T* destination) {
+			this->args.emplace_back(name, [=](std::string value) { parse_value(value, destination); });
+			return *this;
+		}
+
+		template<typename T>
+		command_internal& positional(required_c, std::string name, T* destination) {
+			this->args.emplace_back(args::required, name, [=](std::string value) { parse_value(value, destination); });
 			return *this;
 		}
 
 		template<typename T, typename F>
 		command_internal& positional(F handler) {
-			positional_args.push_back([=](std::string value) {
-				T destination;
-				parse_value(value, &destination);
-				handler(destination);
-			});
+			auto arg = create_arg_with_handler<T, F>(handler);
+			this->args.push_back(arg);
+			return *this;
+		}
+
+		template<typename T, typename F>
+		command_internal& positional(std::string name, F handler) {
+			auto arg = create_arg_with_handler<T, F>(name, handler);
+			this->args.push_back(arg);
+			return *this;
+		}
+
+		template<typename T, typename F>
+		command_internal& positional(required_c, std::string name, F handler) {
+			auto arg = create_arg_with_handler<T, F>(name, handler);
+			arg.required = true;
+			this->args.push_back(arg);
 			return *this;
 		}
 
 		template<typename T>
 		command_internal& rest(T* destination) {
-			rest_args = [=](std::string value) { parse_value(value, destination); };
+			this->rest_args = {[=](std::string value) { parse_value(value, destination); }};
+			return *this;
+		}
+
+		template<typename T>
+		command_internal& rest(std::string name, T* destination) {
+			this->rest_args = {name, [=](std::string value) { parse_value(value, destination); }};
+			return *this;
+		}
+
+		template<typename T>
+		command_internal& rest(required_c, std::string name, T* destination) {
+			this->rest_args = {args::required, name, [=](std::string value) { parse_value(value, destination); }};
 			return *this;
 		}
 
 		template<typename T, typename F>
 		command_internal& rest(F handler) {
-			rest_args = [=](std::string value) {
-				T destination;
-				parse_value(value, &destination);
-				handler(destination);
-			};
+			auto arg = create_arg_with_handler(handler);
+			this->rest_args = arg;
+			return *this;
+		}
+
+		template<typename T, typename F>
+		command_internal& rest(std::string name, F handler) {
+			auto arg = create_arg_with_handler(name, handler);
+			this->rest_args = arg;
+			return *this;
+		}
+
+		template<typename T, typename F>
+		command_internal& rest(required_c, std::string name, F handler) {
+			auto arg = create_arg_with_handler(name, handler);
+			arg.required = true;
+			this->rest_args = arg;
 			return *this;
 		}
 
@@ -400,13 +500,31 @@ namespace args {
 			value(value) {}
 	};
 
-	class unexpecter_arg : public std::logic_error {
+	class unexpected_arg : public std::logic_error {
 		public:
 		const std::string arg;
 
-		unexpecter_arg(std::string arg)
+		unexpected_arg(std::string arg)
 			: logic_error("Unexpected argument \""s + arg + "\"."s),
 			arg(arg) {}
+	};
+
+	class missing_arg : public std::logic_error {
+		public:
+		const std::string arg;
+
+		missing_arg(std::string arg)
+			: logic_error("Argument \""s + arg + "\" is required."),
+			arg(arg) {}
+	};
+
+	class missing_command_arg : public missing_arg {
+		public:
+		const std::string command;
+
+		missing_command_arg(std::string command, std::string arg)
+			: missing_arg(arg),
+			command(command) {}
 	};
 
 	class missing_option : public std::logic_error {
@@ -431,41 +549,89 @@ namespace args {
 		private:
 
 		std::vector<option> options = {};
-		std::vector<std::function<void (std::string)>> positional_args = {};
-		std::function<void (std::string)> rest_args = 0;
+		std::vector<arg_internal> args = {};
+		arg_internal rest_args = {};
 		std::vector<command_internal> commands = {};
 
 		public:
 
 		template<typename T>
 		parser& positional(T* destination) {
-			positional_args.push_back([=](std::string value) { parse_value(value, destination); });
+			this->args.emplace_back([=](std::string value) { parse_value(value, destination); });
+			return *this;
+		}
+
+		template<typename T>
+		parser& positional(std::string name, T* destination) {
+			this->args.emplace_back(name, [=](std::string value) { parse_value(value, destination); });
+			return *this;
+		}
+
+		template<typename T>
+		parser& positional(required_c, std::string name, T* destination) {
+			this->args.emplace_back(required, name, [=](std::string value) { parse_value(value, destination); });
 			return *this;
 		}
 
 		template<typename T, typename F>
 		parser& positional(F handler) {
-			positional_args.push_back([=](std::string value) {
-				T destination;
-				parse_value(value, &destination);
-				handler(destination);
-			});
+			auto arg = create_arg_with_handler<T, F>(handler);
+			this->args.push_back(arg);
+			return *this;
+		}
+
+		template<typename T, typename F>
+		parser& positional(std::string name, F handler) {
+			auto arg = create_arg_with_handler<T, F>(name, handler);
+			this->args.push_back(arg);
+			return *this;
+		}
+
+		template<typename T, typename F>
+		parser& positional(required_c, std::string name, F handler) {
+			auto arg = create_arg_with_handler<T, F>(name, handler);
+			arg.required = true;
+			this->args.push_back(arg);
 			return *this;
 		}
 
 		template<typename T>
 		parser& rest(T* destination) {
-			rest_args = [=](std::string value) { parse_value(value, destination); };
+			this->rest_args = {[=](std::string value) { parse_value(value, destination); }};
+			return *this;
+		}
+
+		template<typename T>
+		parser& rest(std::string name, T* destination) {
+			this->rest_args = {name, [=](std::string value) { parse_value(value, destination); }};
+			return *this;
+		}
+
+		template<typename T>
+		parser& rest(required_c, std::string name, T* destination) {
+			this->rest_args = {required, name, [=](std::string value) { parse_value(value, destination); }};
 			return *this;
 		}
 
 		template<typename T, typename F>
 		parser& rest(F handler) {
-			rest_args = [=](std::string value) {
-				T destination;
-				parse_value(value, &destination);
-				handler(destination);
-			};
+			auto arg = create_arg_with_handler(handler);
+			this->rest_args = arg;
+			return *this;
+		}
+
+		template<typename T, typename F>
+		parser& rest(std::string name, F handler) {
+			auto arg = create_arg_with_handler(name, handler);
+			this->rest_args = arg;
+			return *this;
+		}
+
+		template<typename T, typename F>
+		parser& rest(required_c, std::string name, F handler) {
+			auto arg = create_arg_with_handler(name, handler);
+			arg.required = true;
+			this->rest_args = arg;
 			return *this;
 		}
 
@@ -586,7 +752,7 @@ namespace args {
 					}
 
 					if (option_it == std::end(this->options) && arg->starts_with('-')) {
-						throw invalid_option(*arg);
+						throw invalid_option{*arg};
 					}
 
 					if (option_it != std::end(this->options)) {
@@ -599,7 +765,7 @@ namespace args {
 									try {
 										option_it->parse(*next);
 									} catch (const std::logic_error& err) {
-										throw invalid_value(*arg, *next, err.what());
+										throw invalid_value{*arg, *next, err.what()};
 									}
 									arg++;
 								} else {
@@ -611,12 +777,12 @@ namespace args {
 									try {
 										option_it->parse(*next);
 									} catch (const std::logic_error& err) {
-										throw invalid_value(*arg, *next, err.what());
+										throw invalid_value{*arg, *next, err.what()};
 									}
 									arg++;
 								} else {
 									auto name = *arg;
-									throw invalid_value(name, "", "Value is empty.");
+									throw invalid_value{name, "", "Value is empty."};
 								}
 							}
 						} else if ((!option_it->short_name.empty() && arg->starts_with(option_it->short_name + "="))
@@ -628,7 +794,7 @@ namespace args {
 								option_it->parse(value);
 							} catch (const std::logic_error& err) {
 								auto name = arg->substr(0, arg->find("="));
-								throw invalid_value(name, value, err.what());
+								throw invalid_value{name, value, err.what()};
 							}
 						} else if (!option_it->short_name.empty() && arg->starts_with(option_it->short_name)
 								&& option_it->is_flag) {
@@ -651,7 +817,7 @@ namespace args {
 							} else if (is_valid_flag_value(arg->substr(2))) {
 								option_it->parse(arg->substr(2));
 							} else {
-								throw invalid_option(*arg);
+								throw invalid_option{*arg};
 							}
 						} else if (!option_it->short_name.empty() && arg->starts_with(option_it->short_name)
 								&& !option_it->is_flag) {
@@ -661,7 +827,7 @@ namespace args {
 								option_it->parse(value);
 							} catch (const std::logic_error& err) {
 								auto name = arg->substr(0, 2);
-								throw invalid_value(name, value, err.what());
+								throw invalid_value{name, value, err.what()};
 							}
 						} else if (arg->starts_with("--no-")) {
 							option_it->parse("0");
@@ -682,26 +848,26 @@ namespace args {
 				}
 
 				if (command_it != std::end(this->commands)) {
-					if (command_it->positional_args.size() > command_positional_index) {
-						command_it->positional_args[command_positional_index](*arg);
+					if (command_it->args.size() > command_positional_index) {
+						command_it->args[command_positional_index].parse(*arg);
 						command_positional_index++;
-					} else if (command_it->rest_args) {
-						command_it->rest_args(*arg);
+					} else if (command_it->rest_args.parse_fun) {
+						command_it->rest_args.parse(*arg);
 					} else {
-						if (this->positional_args.size() > positional_index) {
-							this->positional_args[positional_index](*arg);
+						if (this->args.size() > positional_index) {
+							this->args[positional_index].parse(*arg);
 							positional_index++;
-						} else if (this->rest_args) {
-							this->rest_args(*arg);
+						} else if (this->rest_args.parse_fun) {
+							this->rest_args.parse(*arg);
 						}
 					}
-				} else if (this->positional_args.size() > positional_index) {
-					this->positional_args[positional_index](*arg);
+				} else if (this->args.size() > positional_index) {
+					this->args[positional_index].parse(*arg);
 					positional_index++;
-				} else if (this->rest_args) {
-					this->rest_args(*arg);
+				} else if (this->rest_args.parse_fun) {
+					this->rest_args.parse(*arg);
 				} else {
-					throw unexpecter_arg(*arg);
+					throw unexpected_arg{*arg};
 				}
 			}
 
@@ -710,22 +876,47 @@ namespace args {
 			});
 
 			if (missing_option_it != std::end(this->options)) {
-				throw missing_option(option_print_name(*missing_option_it));
+				throw missing_option{option_print_name(*missing_option_it)};
+			}
+
+			auto missing_arg_it = std::find_if(std::begin(this->args), std::end(this->args), [](auto a) {
+				return a.required && !a.exists;
+			});
+
+			if (missing_arg_it != std::end(this->args)) {
+				throw missing_arg{missing_arg_it->name};
+			}
+
+			if (this->rest_args.parse_fun && this->rest_args.required && !this->rest_args.exists) {
+				throw missing_arg{this->rest_args.name};
 			}
 
 			if (command_it != std::end(this->commands)) {
-				auto command_missing_option_it = std::find_if(std::begin(command_it->options), std::end(command_it->options), [](auto o) {
+				auto missing_command_option_it = std::find_if(std::begin(command_it->options), std::end(command_it->options), [](auto o) {
 					return o.required && !o.exists;
 				});
 
-				if (command_missing_option_it != std::end(command_it->options)) {
-					throw missing_command_option(command_print_name(*command_it), option_print_name(*command_missing_option_it));
+				if (missing_command_option_it != std::end(command_it->options)) {
+					throw missing_command_option{command_print_name(*command_it), option_print_name(*missing_command_option_it)};
 				}
 
 				if (command_it->action_fun) {
 					command_it->action_fun();
 				}
+
+				auto missing_command_arg_it = std::find_if(std::begin(command_it->args), std::end(command_it->args), [](auto a) {
+					return a.required && !a.exists;
+				});
+
+				if (missing_command_arg_it != std::end(command_it->args)) {
+					throw missing_command_arg{command_print_name(*command_it), missing_command_arg_it->name};
+				}
+
+				if (command_it->rest_args.parse_fun && command_it->rest_args.required && !command_it->rest_args.exists) {
+					throw missing_command_arg{command_print_name(*command_it), command_it->rest_args.name};
+				}
 			}
+
 		}
 	};
 

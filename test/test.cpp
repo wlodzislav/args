@@ -693,6 +693,116 @@ int main() {
 			});
 		});
 
+		describe("Required args", []{
+			it("arg", []{
+				const char* argv[] = {
+					"./exec",
+					"arg1"
+				};
+				const int argc = std::distance(std::begin(argv), std::end(argv));
+
+				auto arg1 = ""s;
+				auto arg2 = ""s;
+				auto rest = std::vector<std::string>{};
+
+				auto p = args::parser{}
+					.positional(args::required, "arg1", &arg1)
+					.positional(args::required, "arg2", &arg2)
+					.rest(args::required, "rest", &rest);
+
+				auto catched = false;
+				try {
+					p.parse(argc, argv);
+				} catch (const args::missing_arg& err) {
+					catched = true;
+					ctl::expect_equal(err.arg, "arg2"s);
+				}
+				ctl::expect_ok(catched);
+			});
+
+			it("rest", []{
+				const char* argv[] = {
+					"./exec",
+					"arg1"
+				};
+				const int argc = std::distance(std::begin(argv), std::end(argv));
+
+				auto arg1 = ""s;
+				auto arg2 = ""s;
+				auto rest = std::vector<std::string>{};
+
+				auto p = args::parser{}
+					.positional(args::required, "arg1", &arg1)
+					.positional(args::required, "arg2", &arg2)
+					.rest(args::required, "rest", &rest);
+
+				auto catched = false;
+				try {
+					p.parse(argc, argv);
+				} catch (const args::missing_arg& err) {
+					catched = true;
+					ctl::expect_equal(err.arg, "arg2"s);
+				}
+				ctl::expect_ok(catched);
+			});
+
+			it("command + arg", []{
+				const char* argv[] = {
+					"./exec",
+					"cmd",
+					"arg1"
+				};
+				const int argc = std::distance(std::begin(argv), std::end(argv));
+
+				auto arg1 = ""s;
+				auto arg2 = ""s;
+				auto rest = std::vector<std::string>{};
+
+				auto p = args::parser{};
+				p.command("cmd")
+					.positional(args::required, "arg1", &arg1)
+					.positional(args::required, "arg2", &arg2)
+					.rest(args::required, "rest", &rest);
+
+				auto catched = false;
+				try {
+					p.parse(argc, argv);
+				} catch (const args::missing_arg& err) {
+					catched = true;
+					ctl::expect_equal(err.arg, "arg2"s);
+				}
+				ctl::expect_ok(catched);
+			});
+
+			it("command + rest", []{
+				const char* argv[] = {
+					"./exec",
+					"cmd",
+					"arg1"
+				};
+				const int argc = std::distance(std::begin(argv), std::end(argv));
+
+				auto arg1 = ""s;
+				auto arg2 = ""s;
+				auto rest = std::vector<std::string>{};
+
+				auto p = args::parser{};
+				p.command("cmd")
+					.positional(args::required, "arg1", &arg1)
+					.positional(args::required, "arg2", &arg2)
+					.rest(args::required, "rest", &rest);
+
+				auto catched = false;
+				try {
+					p.parse(argc, argv);
+				} catch (const args::missing_arg& err) {
+					catched = true;
+					ctl::expect_equal(err.arg, "arg2"s);
+				}
+				ctl::expect_ok(catched);
+			});
+		});
+
 		describe("Mixed options", []{
 			it("exec -s=on --long=str", []{
 				const char* argv[] = {
