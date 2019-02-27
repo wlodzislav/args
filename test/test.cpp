@@ -223,8 +223,8 @@ int main() {
 			p.parse(argc, argv);
 
 			ctl::expect_ok(s);
-			ctl::expect_equal("arg1"s, arg1);
-			ctl::expect_equal(123.123, arg2);
+			ctl::expect_equal(arg1, "arg1"s);
+			ctl::expect_equal(arg2, 123.123);
 		});
 
 		it("rest positional args", []{
@@ -366,20 +366,23 @@ int main() {
 		});
 
 		describe("Mixed options", []{
-			it("exec -s=str --long=str", []{
+			it("exec -s=on --long=str", []{
 				const char* argv[] = {
 					"exec",
-					"-s=str",
+					"-s=on",
 					"--long=str"
 				};
+				bool s = false;
 				std::string l = "";
 				std::vector<args::option> options = {
-					{"-s", "--long", &l}
+					{"-s", &s},
+					{"--long", &l}
 				};
 
 				const int argc = std::distance(std::begin(argv), std::end(argv));
 				args::parse(argc, argv, options);
 
+				ctl::expect_ok(s);
 				ctl::expect_equal(l, "str"s);
 			});
 
