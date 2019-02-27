@@ -24,12 +24,15 @@ using namespace std::literals;
 
 namespace {
 	bool is_short_option(std::string opt) {
-		return opt[0] == '-' && opt[1] != '-' && opt.length() == 2;
+		return opt.starts_with('-') && opt != "--" && opt.size() == 2;
 	}
 
 	bool is_long_option(std::string opt) {
-		bool has_eq = (opt.find('=') != std::string::npos);
-		return opt[0] == '-' && opt[1] == '-' && opt.length() > 2 && !has_eq;
+		return opt.starts_with("--") && opt.size() > 2;
+	}
+
+	bool is_non_conventional(std::string opt) {
+		return !is_short_option(opt) && !is_long_option(opt) && opt != "--"s;
 	}
 
 	bool is_valid_flag_value(std::string value) {
@@ -117,6 +120,7 @@ namespace args {
 	struct option {
 		const std::string short_name;
 		const std::string long_name;
+		const std::string non_conventional;
 		bool is_flag = false;
 		std::function<void (std::string)> parse;
 
@@ -125,12 +129,14 @@ namespace args {
 		option(std::string name)
 			: short_name(is_short_option(name) ? name : ""),
 			long_name(is_long_option(name) ? name : ""),
+			non_conventional(is_non_conventional(name) ? name : ""),
 			parse([=](std::string value) {}) {}
 
 		template<typename T>
 		option(std::string name, T* destination)
 			: short_name(is_short_option(name) ? name : ""),
 			long_name(is_long_option(name) ? name : ""),
+			non_conventional(is_non_conventional(name) ? name : ""),
 			is_flag(std::is_same<T, bool>::value),
 			parse([=](std::string value) { parse_value(value, destination); }) {}
 
@@ -351,9 +357,6 @@ namespace args {
 				args.push_back(std::string{*arg});
 			}
 
-			auto args_only = false;
-			auto positional_index = 0;
-			auto command_positional_index = 0;
 			auto command_it = std::end(this->commands);
 			auto find_option_if = [&](std::function<bool (args::option o)> pred) {
 				if (command_it != std::end(this->commands)) {
@@ -370,16 +373,20 @@ namespace args {
 				}
 			};
 
+			auto args_only = false;
+			auto positional_index = 0;
+			auto command_positional_index = 0;
 			for (auto arg = std::begin(args); arg != std::end(args); arg++) {
 				if (*arg == "--"s) {
 					args_only = true;
 					continue;
 				}
 
-				if (!args_only && arg->starts_with('-')) {
+				if (!args_only) {
 					auto option_it = find_option_if([&](auto o) {
 						return (!o.short_name.empty() && arg->starts_with(o.short_name))
-							|| (!o.long_name.empty() && arg->starts_with(o.long_name));
+							|| (!o.long_name.empty() && arg->starts_with(o.long_name))
+							|| (!o.non_conventional.empty() && arg->starts_with(o.non_conventional));
 					});
 
 					if (option_it == std::end(this->options) && arg->starts_with("--no-")) {
@@ -393,93 +400,100 @@ namespace args {
 						}
 					}
 
-					if (option_it == std::end(this->options)) {
+					if (option_it == std::end(this->options) && arg->starts_with('-')) {
 						throw std::invalid_argument("Invalid command line option \""s + *arg + "\".");
 					}
 
-					if (*arg == option_it->short_name || *arg == option_it->long_name) {
-						if (option_it->is_flag) {
-							auto next = std::next(arg);
-							if (next != std::end(args) && is_valid_flag_value(*next)) {
-								option_it->parse(*next);
-								arg++;
-							} else {
-								option_it->parse("");
-							}
-						} else {
-							auto next = std::next(arg);
-							if (next != std::end(args) && !next->starts_with("-")) {
-								option_it->parse(*next);
-								arg++;
-							} else {
-								throw std::invalid_argument("Option \""s + *arg + "\" requires value.");
-							}
-						}
-					} else if ((!option_it->short_name.empty() && arg->starts_with(option_it->short_name + "="))
-							|| (!option_it->long_name.empty() && arg->starts_with(option_it->long_name + "="))) {
+					if (option_it != std::end(this->options)) {
+						if (*arg == option_it->short_name || *arg == option_it->long_name
+								|| *arg == option_it->non_conventional) {
 
-						option_it->parse(arg->substr(arg->find("=") + 1));
-					} else if (!option_it->short_name.empty() && arg->starts_with(option_it->short_name)
-							&& option_it->is_flag) {
+							if (option_it->is_flag) {
+								auto next = std::next(arg);
+								if (next != std::end(args) && is_valid_flag_value(*next)) {
+									option_it->parse(*next);
+									arg++;
+								} else {
+									option_it->parse("");
+								}
+							} else {
+								auto next = std::next(arg);
+								if (next != std::end(args) && !next->starts_with("-")) {
+									option_it->parse(*next);
+									arg++;
+								} else {
+									throw std::invalid_argument("Option \""s + *arg + "\" requires value.");
+								}
+							}
+						} else if ((!option_it->short_name.empty() && arg->starts_with(option_it->short_name + "="))
+								|| (!option_it->long_name.empty() && arg->starts_with(option_it->long_name + "="))
+								|| (!option_it->non_conventional.empty() && arg->starts_with(option_it->non_conventional + "="))) {
 
-						auto is_short_grouped = std::all_of(std::begin(*arg) + 1, std::end(*arg), [&](auto c) {
-							auto name = "-"s + c;
-							auto option_it = find_option_if([&](auto o) {
-								return o.short_name == name;
-							});
-							return option_it != std::end(this->options);
-						});
-						if (is_short_grouped) {
-							std::for_each(std::begin(*arg) + 1, std::end(*arg), [&](auto c) {
+							option_it->parse(arg->substr(arg->find("=") + 1));
+						} else if (!option_it->short_name.empty() && arg->starts_with(option_it->short_name)
+								&& option_it->is_flag) {
+
+							auto is_short_grouped = std::all_of(std::begin(*arg) + 1, std::end(*arg), [&](auto c) {
 								auto name = "-"s + c;
 								auto option_it = find_option_if([&](auto o) {
 									return o.short_name == name;
 								});
-								option_it->parse("");
+								return option_it != std::end(this->options);
 							});
-						} else if (is_valid_flag_value(arg->substr(2))) {
-							option_it->parse(arg->substr(2));
-						}
-					} else if (!option_it->short_name.empty() && arg->starts_with(option_it->short_name)
-							&& !option_it->is_flag) {
-
-						option_it->parse(arg->substr(2));
-					} else if (arg->starts_with("--no-")) {
-						option_it->parse("0");
-					}
-				} else {
-					if (!args_only && command_it == std::end(this->commands)) {
-						auto it = std::find_if(std::begin(this->commands), std::end(this->commands), [&](auto c) {
-							return c.name == *arg || c.alias == *arg;
-						});
-						if (it != std::end(this->commands)) {
-							command_it = it;
-							continue;
-						}
-					}
-
-					if (command_it != std::end(this->commands)) {
-						if (command_it->positional_args.size() > command_positional_index) {
-							command_it->positional_args[command_positional_index](*arg);
-							command_positional_index++;
-						} else if (command_it->rest_args) {
-							command_it->rest_args(*arg);
-						} else {
-							if (this->positional_args.size() > positional_index) {
-								this->positional_args[positional_index](*arg);
-								positional_index++;
-							} else if (this->rest_args) {
-								this->rest_args(*arg);
+							if (is_short_grouped) {
+								std::for_each(std::begin(*arg) + 1, std::end(*arg), [&](auto c) {
+									auto name = "-"s + c;
+									auto option_it = find_option_if([&](auto o) {
+										return o.short_name == name;
+									});
+									option_it->parse("");
+								});
+							} else if (is_valid_flag_value(arg->substr(2))) {
+								option_it->parse(arg->substr(2));
 							}
+						} else if (!option_it->short_name.empty() && arg->starts_with(option_it->short_name)
+								&& !option_it->is_flag) {
+
+							option_it->parse(arg->substr(2));
+						} else if (arg->starts_with("--no-")) {
+							option_it->parse("0");
 						}
-					} else if (this->positional_args.size() > positional_index) {
-						this->positional_args[positional_index](*arg);
-						positional_index++;
-					} else if (this->rest_args) {
-						this->rest_args(*arg);
-					} else {
-						throw std::invalid_argument("Unexpected argument "s + *arg);
+
+						continue;
 					}
+				}
+
+				if (!args_only && command_it == std::end(this->commands)) {
+					auto it = std::find_if(std::begin(this->commands), std::end(this->commands), [&](auto c) {
+						return c.name == *arg || c.alias == *arg;
+					});
+					if (it != std::end(this->commands)) {
+						command_it = it;
+						continue;
+					}
+				}
+
+				if (command_it != std::end(this->commands)) {
+					if (command_it->positional_args.size() > command_positional_index) {
+						command_it->positional_args[command_positional_index](*arg);
+						command_positional_index++;
+					} else if (command_it->rest_args) {
+						command_it->rest_args(*arg);
+					} else {
+						if (this->positional_args.size() > positional_index) {
+							this->positional_args[positional_index](*arg);
+							positional_index++;
+						} else if (this->rest_args) {
+							this->rest_args(*arg);
+						}
+					}
+				} else if (this->positional_args.size() > positional_index) {
+					this->positional_args[positional_index](*arg);
+					positional_index++;
+				} else if (this->rest_args) {
+					this->rest_args(*arg);
+				} else {
+					throw std::invalid_argument("Unexpected argument "s + *arg);
 				}
 			}
 

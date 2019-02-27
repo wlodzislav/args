@@ -205,6 +205,31 @@ int main() {
 			ctl::expect_ok(s);
 		});
 
+		it("non conventional", []{
+			const char* argv[] = {
+				"./exec",
+				"-frtti",
+				"-fno-rtti",
+				"value",
+				"+fb=1",
+			};
+			auto frtti = false;
+			auto fnorrtti = ""s;
+			auto fb = 0;
+			std::vector<args::option> options = {
+				{"-frtti", &frtti},
+				{"-fno-rtti", &fnorrtti},
+				{"+fb", &fb}
+			};
+
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+			args::parse(argc, argv, options);
+
+			ctl::expect_equal(frtti, true);
+			ctl::expect_equal(fnorrtti, "value"s);
+			ctl::expect_equal(fb, 1);
+		});
+
 		it("positional args", []{
 			const char* argv[] = {
 				"./exec",
