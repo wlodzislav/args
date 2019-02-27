@@ -52,8 +52,11 @@ namespace {
 	std::enable_if_t<is_stringstreamable<T>::value>
 	parse_value(std::string value, T* destination) {
 		if (!value.empty()) {
-			std::stringstream stream(value);
-			stream >> *destination;
+			std::stringstream ss(value);
+			ss >> *destination;
+			if (ss.fail()) {
+				throw std::logic_error("Can't parse \""s + value + "\"."s);
+			}
 		}
 	}
 
@@ -67,8 +70,9 @@ namespace {
 				value == "off" || value == "no") {
 				*destination = false;
 			} else {
-				throw std::invalid_argument("Invalid command line option. Value \""s + value
-						+ R"(" is not one of "1", "0", "true", "false", "on", "off", "yes", "no".)");
+				throw std::invalid_argument("Value \""s
+					+ value
+					+ R"(" is not one of "1", "0", "true", "false", "on", "off", "yes", "no".)");
 			}
 		} else {
 			*destination = true;
@@ -81,9 +85,12 @@ namespace {
 	>
 	parse_value(std::string value, T* destination) {
 		if (!value.empty()) {
-			std::stringstream stream(value);
+			std::stringstream ss(value);
 			typename T::value_type c;
-			stream >> c;
+			ss >> c;
+			if (ss.fail()) {
+				throw std::logic_error("Can't parse \""s + value + "\"."s);
+			}
 			destination->insert(destination->end(), c);
 		}
 	}
@@ -94,25 +101,29 @@ namespace {
 		&& is_stringstreamable<typename T::mapped_type>::value
 	>
 	parse_value(std::string value, T* destination) {
-		if (!value.empty()) {
-			auto eq_pos = value.find('=');
-			if (eq_pos == std::string::npos) {
-				throw std::invalid_argument("Invalid command line option. Value \""s + value
-						+ "\" is not key=value pair.");
-			}
-
-			auto k_str = value.substr(0, eq_pos);
-			typename T::key_type k;
-			std::stringstream k_stream(k_str);
-			k_stream >> k;
-
-			auto v_str = value.substr(eq_pos + 1);
-			typename T::mapped_type v;
-			std::stringstream v_stream(v_str);
-			v_stream >> v;
-
-			(*destination)[k] = v;
+		auto eq_pos = value.find('=');
+		if (eq_pos == std::string::npos) {
+			throw std::logic_error("Value \""s + value
+					+ "\" is not key=value pair.");
 		}
+
+		auto k_str = value.substr(0, eq_pos);
+		typename T::key_type k;
+		std::stringstream k_stream(k_str);
+		k_stream >> k;
+		if (k_stream.fail()) {
+			throw std::logic_error("Can't parse key in pair \""s + value + "\"."s);
+		}
+
+		auto v_str = value.substr(eq_pos + 1);
+		typename T::mapped_type v;
+		std::stringstream v_stream(v_str);
+		v_stream >> v;
+		if (v_stream.fail()) {
+			throw std::logic_error("Can't parse value in pair \""s + value + "\"."s);
+		}
+
+		(*destination)[k] = v;
 	}
 }
 
@@ -257,6 +268,35 @@ namespace {
 }
 
 namespace args {
+	class invalid_option : public std::logic_error {
+		public:
+		const std::string option;
+
+		invalid_option(std::string option)
+			: logic_error("Invalid option \""s + option + "\"."),
+			option(option) {}
+	};
+
+	class invalid_value : public std::logic_error {
+		public:
+		const std::string option;
+		const std::string value;
+
+		invalid_value(std::string option, std::string value, std::string what_arg)
+			: logic_error("Invalid value for option \""s + option + "\". " + what_arg),
+			option(option),
+			value(value) {}
+	};
+
+	class unexpecter_arg : public std::logic_error {
+		public:
+		const std::string arg;
+
+		unexpecter_arg(std::string arg)
+			: logic_error("Unexpected argument \""s + arg + "\"."s),
+			arg(arg) {}
+	};
+
 	class parser {
 		private:
 
@@ -358,7 +398,7 @@ namespace args {
 			}
 
 			auto command_it = std::end(this->commands);
-			auto find_option_if = [&](std::function<bool (args::option o)> pred) {
+			auto find_option_if = [&](const std::function<bool (args::option o)> pred) {
 				if (command_it != std::end(this->commands)) {
 					auto command_option_it = std::find_if(std::begin(command_it->options), std::end(command_it->options), pred);
 					if (command_option_it != std::end(command_it->options)) {
@@ -401,7 +441,7 @@ namespace args {
 					}
 
 					if (option_it == std::end(this->options) && arg->starts_with('-')) {
-						throw std::invalid_argument("Invalid command line option \""s + *arg + "\".");
+						throw invalid_option(*arg);
 					}
 
 					if (option_it != std::end(this->options)) {
@@ -411,25 +451,40 @@ namespace args {
 							if (option_it->is_flag) {
 								auto next = std::next(arg);
 								if (next != std::end(args) && is_valid_flag_value(*next)) {
-									option_it->parse(*next);
+									try {
+										option_it->parse(*next);
+									} catch (const std::logic_error& err) {
+										throw invalid_value(*arg, *next, err.what());
+									}
 									arg++;
 								} else {
-									option_it->parse("");
+									option_it->parse("1");
 								}
 							} else {
 								auto next = std::next(arg);
 								if (next != std::end(args) && !next->starts_with("-")) {
-									option_it->parse(*next);
+									try {
+										option_it->parse(*next);
+									} catch (const std::logic_error& err) {
+										throw invalid_value(*arg, *next, err.what());
+									}
 									arg++;
 								} else {
-									throw std::invalid_argument("Option \""s + *arg + "\" requires value.");
+									auto name = *arg;
+									throw invalid_value(name, "", "Value is empty.");
 								}
 							}
 						} else if ((!option_it->short_name.empty() && arg->starts_with(option_it->short_name + "="))
 								|| (!option_it->long_name.empty() && arg->starts_with(option_it->long_name + "="))
 								|| (!option_it->non_conventional.empty() && arg->starts_with(option_it->non_conventional + "="))) {
 
-							option_it->parse(arg->substr(arg->find("=") + 1));
+							auto value = arg->substr(arg->find("=") + 1);
+							try {
+								option_it->parse(value);
+							} catch (const std::logic_error& err) {
+								auto name = arg->substr(0, arg->find("="));
+								throw invalid_value(name, value, err.what());
+							}
 						} else if (!option_it->short_name.empty() && arg->starts_with(option_it->short_name)
 								&& option_it->is_flag) {
 
@@ -446,15 +501,23 @@ namespace args {
 									auto option_it = find_option_if([&](auto o) {
 										return o.short_name == name;
 									});
-									option_it->parse("");
+									option_it->parse("1");
 								});
 							} else if (is_valid_flag_value(arg->substr(2))) {
 								option_it->parse(arg->substr(2));
+							} else {
+								throw invalid_option(*arg);
 							}
 						} else if (!option_it->short_name.empty() && arg->starts_with(option_it->short_name)
 								&& !option_it->is_flag) {
 
-							option_it->parse(arg->substr(2));
+							auto value = arg->substr(2);
+							try {
+								option_it->parse(value);
+							} catch (const std::logic_error& err) {
+								auto name = arg->substr(0, 2);
+								throw invalid_value(name, value, err.what());
+							}
 						} else if (arg->starts_with("--no-")) {
 							option_it->parse("0");
 						}
@@ -493,7 +556,7 @@ namespace args {
 				} else if (this->rest_args) {
 					this->rest_args(*arg);
 				} else {
-					throw std::invalid_argument("Unexpected argument "s + *arg);
+					throw unexpecter_arg(*arg);
 				}
 			}
 
