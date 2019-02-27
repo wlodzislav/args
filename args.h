@@ -65,9 +65,8 @@ namespace {
 				value == "off" || value == "no") {
 				*destination = false;
 			} else {
-				throw std::invalid_argument(
-					std::string("Invalid command line option. Value \"") +
-					value + '"' + R"( is not one of "1", "0", "true", "false", "on", "off", "yes", "no".)");
+				throw std::invalid_argument("Invalid command line option. Value \""s + value
+						+ R"(" is not one of "1", "0", "true", "false", "on", "off", "yes", "no".)");
 			}
 		} else {
 			*destination = true;
@@ -96,9 +95,8 @@ namespace {
 		if (!value.empty()) {
 			auto eq_pos = value.find('=');
 			if (eq_pos == std::string::npos) {
-				throw std::invalid_argument(
-					std::string("Invalid command line option. Value \"") +
-					value + '"' + "is not key=value pair.");
+				throw std::invalid_argument("Invalid command line option. Value \""s + value
+						+ "\" is not key=value pair.");
 			}
 
 			auto k_str = value.substr(0, eq_pos);
