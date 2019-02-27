@@ -21,6 +21,8 @@
 #include <iterator>
 #include <optional>
 
+using namespace std::literals;
+
 namespace {
 	bool is_option(std::string opt) {
 		return opt[0] == '-';
@@ -275,7 +277,7 @@ namespace args {
 		void parse(int argc, const char** argv) {
 			auto args = std::vector<std::string>{};
 			for (const char** arg = argv + 1; arg < argv + argc; arg++) {
-				args.push_back(std::string(*arg));
+				args.push_back(std::string{*arg});
 			}
 
 			auto positional_index = 0;
@@ -304,7 +306,7 @@ namespace args {
 					});
 
 					if (option_it == std::end(this->options)) {
-						throw std::invalid_argument(std::string("Invalid command line option \"") + *arg + "\".");
+						throw std::invalid_argument("Invalid command line option \""s + *arg + "\".");
 					}
 
 					if (*arg == option_it->short_name || *arg == option_it->long_name) {
@@ -322,7 +324,7 @@ namespace args {
 								option_it->parse(*next);
 								arg++;
 							} else {
-								throw std::invalid_argument(std::string("Option \"") + *arg + "\" requires value.");
+								throw std::invalid_argument("Option \""s + *arg + "\" requires value.");
 							}
 						}
 					} else if ((!option_it->short_name.empty() && arg->starts_with(option_it->short_name + "="))
@@ -333,7 +335,7 @@ namespace args {
 							&& option_it->is_flag) {
 
 						auto is_short_grouped = std::all_of(std::begin(*arg) + 1, std::end(*arg), [&](auto c) {
-							auto name = std::string("-") + c;
+							auto name = "-"s + c;
 							auto option_it = find_option_if([&](auto o) {
 								return o.short_name == name;
 							});
@@ -341,7 +343,7 @@ namespace args {
 						});
 						if (is_short_grouped) {
 							std::for_each(std::begin(*arg) + 1, std::end(*arg), [&](auto c) {
-								auto name = std::string("-") + c;
+								auto name = "-"s + c;
 								auto option_it = find_option_if([&](auto o) {
 									return o.short_name == name;
 								});
@@ -386,7 +388,7 @@ namespace args {
 					} else if (this->rest_args) {
 						this->rest_args(*arg);
 					} else {
-						throw std::invalid_argument(std::string("Unexpected argument") + *arg);
+						throw std::invalid_argument("Unexpected argument"s + *arg);
 					}
 				}
 			}

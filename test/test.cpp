@@ -9,6 +9,8 @@
 
 #include "../args.h"
 
+using namespace std::literals;
+
 template<typename T>
 std::ostream& print_arr(std::ostream &ss, const T& v) {
 	ss << "[";
