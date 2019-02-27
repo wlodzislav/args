@@ -320,6 +320,32 @@ int main() {
 			ctl::expect_equal(i, {0, 1, 2});
 		});
 
+		it("lambda positional + rest handler", []{
+			const char* argv[] = {
+				"./exec",
+				"arg1",
+				"123.123",
+				"a",
+				"b",
+				"c"
+			};
+			auto arg1 = ""s;
+			auto arg2 = 0.0;
+			auto rest = std::vector<std::string>{};
+
+			auto p = args::parser{}
+				.positional(&arg1)
+				.positional(&arg2)
+				.rest(&rest);
+
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+			p.parse(argc, argv);
+
+			ctl::expect_equal(arg1, "arg1"s);
+			ctl::expect_equal(arg2, 123.123);
+			ctl::expect_equal(rest, {"a", "b", "c"});
+		});
+
 		describe("Commands", []{
 			it("command short + long name", []{
 				const char* argv[] = {
@@ -426,6 +452,7 @@ int main() {
 				ctl::expect_equal(grest, {"garg2"});
 				ctl::expect_ok(list_called);
 			});
+
 			it("lambda option handler", []{
 				const char* argv[] = {
 					"./exec",
@@ -457,6 +484,34 @@ int main() {
 				ctl::expect_equal(s, true);
 				ctl::expect_equal(l, "str"s);
 				ctl::expect_equal(i, {0, 1, 2});
+			});
+
+			it("lambda positional + rest handler", []{
+				const char* argv[] = {
+					"./exec",
+					"cmd",
+					"arg1",
+					"123.123",
+					"a",
+					"b",
+					"c"
+				};
+				auto arg1 = ""s;
+				auto arg2 = 0.0;
+				auto rest = std::vector<std::string>{};
+
+				auto p = args::parser{};
+				p.command("cmd")
+					.positional(&arg1)
+					.positional(&arg2)
+					.rest(&rest);
+
+				const int argc = std::distance(std::begin(argv), std::end(argv));
+				p.parse(argc, argv);
+
+				ctl::expect_equal(arg1, "arg1"s);
+				ctl::expect_equal(arg2, 123.123);
+				ctl::expect_equal(rest, {"a", "b", "c"});
 			});
 		});
 

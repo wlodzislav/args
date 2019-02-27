@@ -173,9 +173,29 @@ namespace {
 			return *this;
 		}
 
+		template<typename T, typename F>
+		command_internal& positional(F handler) {
+			positional_args.push_back([=](std::string value) {
+				T destination;
+				parse_value(value, &destination);
+				handler(destination);
+			});
+			return *this;
+		}
+
 		template<typename T>
 		command_internal& rest(T* destination) {
 			rest_args = [=](std::string value) { parse_value(value, destination); };
+			return *this;
+		}
+
+		template<typename T, typename F>
+		command_internal& rest(F handler) {
+			rest_args = [=](std::string value) {
+				T destination;
+				parse_value(value, &destination);
+				handler(destination);
+			};
 			return *this;
 		}
 
@@ -247,9 +267,29 @@ namespace args {
 			return *this;
 		}
 
+		template<typename T, typename F>
+		parser& positional(F handler) {
+			positional_args.push_back([=](std::string value) {
+				T destination;
+				parse_value(value, &destination);
+				handler(destination);
+			});
+			return *this;
+		}
+
 		template<typename T>
 		parser& rest(T* destination) {
 			rest_args = [=](std::string value) { parse_value(value, destination); };
+			return *this;
+		}
+
+		template<typename T, typename F>
+		parser& rest(F handler) {
+			rest_args = [=](std::string value) {
+				T destination;
+				parse_value(value, &destination);
+				handler(destination);
+			};
 			return *this;
 		}
 
