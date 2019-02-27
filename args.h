@@ -24,30 +24,13 @@
 using namespace std::literals;
 
 namespace {
-	bool is_option(std::string opt) {
-		return opt[0] == '-';
-	}
-
 	bool is_short_option(std::string opt) {
 		return opt[0] == '-' && opt[1] != '-' && opt.length() == 2;
-	}
-
-	bool is_short_option_width_eq_sign_value(std::string opt) {
-		return opt[0] == '-' && opt[1] != '-' && opt[2] == '=';
-	}
-
-	bool is_short_grouped_or_with_value(std::string opt) {
-		return opt[0] == '-' && opt[1] != '-' && opt.length() > 2;
 	}
 
 	bool is_long_option(std::string opt) {
 		bool has_eq = (opt.find('=') != std::string::npos);
 		return opt[0] == '-' && opt[1] == '-' && opt.length() > 2 && !has_eq;
-	}
-
-	bool is_long_option_width_eq_sign_value(std::string opt) {
-		bool has_eq = (opt.find('=') != std::string::npos);
-		return opt[0] == '-' && opt[1] == '-' && opt.length() > 2 && has_eq;
 	}
 
 	bool is_valid_flag_value(std::string value) {
