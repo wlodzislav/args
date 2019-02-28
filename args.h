@@ -55,7 +55,7 @@ namespace {
 			auto ss = std::stringstream{value};
 			ss >> *destination;
 			if (ss.fail()) {
-				throw std::logic_error("Can't parse \""s + value + "\"."s);
+				throw std::runtime_error("Can't parse \""s + value + "\"."s);
 			}
 		}
 	}
@@ -70,7 +70,7 @@ namespace {
 				value == "off" || value == "no") {
 				*destination = false;
 			} else {
-				throw std::invalid_argument("Value \""s
+				throw std::runtime_error("Value \""s
 					+ value
 					+ R"(" is not one of "1", "0", "true", "false", "on", "off", "yes", "no".)");
 			}
@@ -89,7 +89,7 @@ namespace {
 			typename T::value_type c;
 			ss >> c;
 			if (ss.fail()) {
-				throw std::logic_error("Can't parse \""s + value + "\"."s);
+				throw std::runtime_error("Can't parse \""s + value + "\"."s);
 			}
 			destination->insert(std::end(*destination), c);
 		}
@@ -103,7 +103,7 @@ namespace {
 	parse_value(std::string value, T* destination) {
 		auto eq_pos = value.find('=');
 		if (eq_pos == std::string::npos) {
-			throw std::logic_error("Value \""s + value
+			throw std::runtime_error("Value \""s + value
 					+ "\" is not key=value pair.");
 		}
 
@@ -112,7 +112,7 @@ namespace {
 		auto k_stream = std::stringstream{k_str};
 		k_stream >> k;
 		if (k_stream.fail()) {
-			throw std::logic_error("Can't parse key in pair \""s + value + "\"."s);
+			throw std::runtime_error("Can't parse key in pair \""s + value + "\"."s);
 		}
 
 		auto v_str = value.substr(eq_pos + 1);
@@ -120,7 +120,7 @@ namespace {
 		auto v_stream = std::stringstream{v_str};
 		v_stream >> v;
 		if (v_stream.fail()) {
-			throw std::logic_error("Can't parse value in pair \""s + value + "\"."s);
+			throw std::runtime_error("Can't parse value in pair \""s + value + "\"."s);
 		}
 
 		(*destination)[k] = v;
@@ -436,41 +436,71 @@ namespace {
 namespace args {
 	using options = std::vector<option>;
 
-	class invalid_option : public std::logic_error {
+	class invalid_option : public std::runtime_error {
 		public:
 		const std::string option;
 
 		invalid_option(std::string option)
-			: logic_error("Invalid option \""s + option + "\"."),
+			: runtime_error("Invalid option \""s + option + "\"."),
 			option(option) {}
+
 	};
 
-	class invalid_value : public std::logic_error {
+	class invalid_option_value : public std::runtime_error {
 		public:
 		const std::string option;
 		const std::string value;
 
-		invalid_value(std::string option, std::string value, std::string what_arg)
-			: logic_error("Invalid value for option \""s + option + "\". " + what_arg),
+		invalid_option_value(std::string option, std::string value, std::string value_what, std::string what = ""s)
+			: runtime_error(what.empty() ? "Invalid value for option \""s + option + "\". " + value_what : what),
 			option(option),
 			value(value) {}
 	};
 
-	class unexpected_arg : public std::logic_error {
+	class invalid_command_option_value : public invalid_option_value {
 		public:
-		const std::string arg;
+		const std::string command;
 
-		unexpected_arg(std::string arg)
-			: logic_error("Unexpected argument \""s + arg + "\"."s),
-			arg(arg) {}
+		invalid_command_option_value(std::string command, std::string option, std::string value, std::string value_what)
+			: invalid_option_value(option, value, "Invalid value for command \""s + command + "\" option \""s + option + "\". " + value_what),
+			command(command) {}
 	};
 
-	class missing_arg : public std::logic_error {
+	class invalid_arg_value : public std::runtime_error {
+		public:
+		const std::string arg;
+		const std::string value;
+
+		invalid_arg_value(std::string arg, std::string value, std::string value_what, std::string what = ""s)
+			: runtime_error(what.empty() ? "Invalid value for argument  \""s + arg + "\". " + value_what : what),
+			arg(arg),
+			value(value) {}
+	};
+
+	class invalid_command_arg_value : public invalid_arg_value {
+		public:
+		const std::string command;
+
+		invalid_command_arg_value(std::string command, std::string arg, std::string value, std::string value_what)
+			: invalid_arg_value(arg, value, "Invalid value for command \""s + command + "\" argument  \""s + arg + "\". " + value_what),
+			command(command) {}
+	};
+
+	class unexpected_arg : public std::runtime_error {
+		public:
+		const std::string value;
+
+		unexpected_arg(std::string value)
+			: runtime_error("Unexpected argument \""s + value + "\"."s),
+			value(value) {}
+	};
+
+	class missing_arg : public std::runtime_error {
 		public:
 		const std::string arg;
 
-		missing_arg(std::string arg)
-			: logic_error("Argument \""s + arg + "\" is required."),
+		missing_arg(std::string arg, std::string what = ""s)
+			: runtime_error(what.empty() ? "Argument \""s + arg + "\" is required." : what),
 			arg(arg) {}
 	};
 
@@ -479,16 +509,16 @@ namespace args {
 		const std::string command;
 
 		missing_command_arg(std::string command, std::string arg)
-			: missing_arg(arg),
+			: missing_arg(arg, "Command \""s + command + "\" argument \""s + arg + "\" is required."),
 			command(command) {}
 	};
 
-	class missing_option : public std::logic_error {
+	class missing_option : public std::runtime_error {
 		public:
 		const std::string option;
 
-		missing_option(std::string option)
-			: logic_error("Option \""s + option + "\" is required."),
+		missing_option(std::string option, std::string what = ""s)
+			: runtime_error(what.empty() ? "Option \""s + option + "\" is required." : what),
 			option(option) {}
 	};
 
@@ -497,7 +527,7 @@ namespace args {
 		const std::string command;
 
 		missing_command_option(std::string command, std::string option)
-			: missing_option(option),
+			: missing_option(option, "Command \""s + command + "\" option \""s + option + "\" is required."),
 			command(command) {}
 	};
 
@@ -710,6 +740,11 @@ namespace args {
 					}
 
 					if (option_it != std::end(this->options)) {
+						/*
+						auto is_command_option = command_it != std::end(this->commands)
+							&& std::find(std::begin(command_it->options), std::end(command_it->options), *option_it) != std::end(command_it->options);
+							*/
+
 						if (*arg == option_it->short_name || *arg == option_it->long_name
 								|| *arg == option_it->non_conventional) {
 
@@ -718,8 +753,8 @@ namespace args {
 								if (next != std::end(args) && is_valid_flag_value(*next)) {
 									try {
 										option_it->parse(*next);
-									} catch (const std::logic_error& err) {
-										throw invalid_value{*arg, *next, err.what()};
+									} catch (const std::runtime_error& err) {
+										throw invalid_option_value{*arg, *next, err.what()};
 									}
 									arg++;
 								} else {
@@ -730,13 +765,13 @@ namespace args {
 								if (next != std::end(args) && !next->starts_with("-")) {
 									try {
 										option_it->parse(*next);
-									} catch (const std::logic_error& err) {
-										throw invalid_value{*arg, *next, err.what()};
+									} catch (const std::runtime_error& err) {
+										throw invalid_option_value{*arg, *next, err.what()};
 									}
 									arg++;
 								} else {
 									auto name = *arg;
-									throw invalid_value{name, "", "Value is empty."};
+									throw invalid_option_value{name, "", "Value is empty."};
 								}
 							}
 						} else if ((!option_it->short_name.empty() && arg->starts_with(option_it->short_name + "="))
@@ -746,9 +781,9 @@ namespace args {
 							auto value = arg->substr(arg->find("=") + 1);
 							try {
 								option_it->parse(value);
-							} catch (const std::logic_error& err) {
+							} catch (const std::runtime_error& err) {
 								auto name = arg->substr(0, arg->find("="));
-								throw invalid_value{name, value, err.what()};
+								throw invalid_option_value{name, value, err.what()};
 							}
 						} else if (!option_it->short_name.empty() && arg->starts_with(option_it->short_name)
 								&& option_it->is_flag) {
@@ -758,7 +793,7 @@ namespace args {
 								auto option_it = find_option_if([&](auto o) {
 									return o.short_name == name;
 								});
-								return option_it != std::end(this->options);
+								return option_it != std::end(this->options) && option_it->is_flag;
 							});
 							if (is_short_grouped) {
 								std::for_each(std::begin(*arg) + 1, std::end(*arg), [&](auto c) {
@@ -779,9 +814,9 @@ namespace args {
 							auto value = arg->substr(2);
 							try {
 								option_it->parse(value);
-							} catch (const std::logic_error& err) {
+							} catch (const std::runtime_error& err) {
 								auto name = arg->substr(0, 2);
-								throw invalid_value{name, value, err.what()};
+								throw invalid_option_value{name, value, err.what()};
 							}
 						} else if (arg->starts_with("--no-")) {
 							option_it->parse("0");
@@ -824,23 +859,40 @@ namespace args {
 
 				if (command_it != std::end(this->commands)) {
 					if (command_it->args.size() > command_arg_index) {
-						command_it->args[command_arg_index].parse(*arg);
-						command_arg_index++;
-					} else if (command_it->rest_args.parse_fun) {
-						command_it->rest_args.parse(*arg);
-					} else {
-						if (this->args.size() > arg_index) {
-							this->args[arg_index].parse(*arg);
-							arg_index++;
-						} else if (this->rest_args.parse_fun) {
-							this->rest_args.parse(*arg);
+						try {
+							command_it->args[command_arg_index].parse(*arg);
+						} catch (const std::runtime_error& err) {
+							auto name = command_it->args[command_arg_index].name;
+							throw invalid_arg_value{name, *arg, err.what()};
 						}
+						command_arg_index++;
+						continue;
+					} else if (command_it->rest_args.parse_fun) {
+						try {
+							command_it->rest_args.parse(*arg);
+						} catch (const std::runtime_error& err) {
+							auto name = command_it->rest_args.name;
+							throw invalid_arg_value{name, *arg, err.what()};
+						}
+						continue;
 					}
-				} else if (this->args.size() > arg_index) {
-					this->args[arg_index].parse(*arg);
+				}
+
+				if (this->args.size() > arg_index) {
+					try {
+						this->args[arg_index].parse(*arg);
+					} catch (const std::runtime_error& err) {
+						auto name = this->args[arg_index].name;
+						throw invalid_arg_value{name, *arg, err.what()};
+					}
 					arg_index++;
 				} else if (this->rest_args.parse_fun) {
-					this->rest_args.parse(*arg);
+					try {
+						this->rest_args.parse(*arg);
+					} catch (const std::runtime_error& err) {
+						auto name = this->rest_args.name;
+						throw invalid_arg_value{name, *arg, err.what()};
+					}
 				} else {
 					throw unexpected_arg{*arg};
 				}
