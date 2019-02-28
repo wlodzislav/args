@@ -67,10 +67,6 @@ examples: $(EXAMPLES)
 	./examples/required-errors -a -b arg1 rest cmd -c -d carg1
 	@echo
 	./examples/command-required-error
-	@echo
-	./examples/help --help
-	@echo
-	./examples/help-required-command --help
 
 .PHONY: test-help
 test-help: test/help test/help-required-command test/help-custom

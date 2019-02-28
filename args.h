@@ -27,26 +27,26 @@
 using namespace std::literals;
 
 namespace {
-	bool is_short_option(std::string opt) {
+	bool is_short_option(const std::string& opt) {
 		return opt.starts_with('-') && opt != "--" && opt.size() == 2;
 	}
 
-	bool is_long_option(std::string opt) {
+	bool is_long_option(const std::string& opt) {
 		return opt.starts_with("--") && opt.size() > 2;
 	}
 
-	bool is_non_conventional(std::string opt) {
+	bool is_non_conventional(const std::string& opt) {
 		return !is_short_option(opt) && !is_long_option(opt) && opt != "--"s;
 	}
 
-	bool is_valid_flag_value(std::string value) {
+	bool is_valid_flag_value(const std::string& value) {
 		return value == "1" || value == "0"
 			|| value == "true" || value == "false"
 			|| value == "yes" || value == "no"
 			|| value == "on" || value == "off";
 	}
 
-	bool is_single_word(std::string value) {
+	bool is_single_word(const std::string& value) {
 		return value.find(' ') == std::string::npos;
 	}
 
@@ -58,7 +58,7 @@ namespace {
 
 	template<typename T>
 	std::enable_if_t<is_stringstreamable<T>::value>
-	parse_value(std::string value, T* destination) {
+	parse_value(const std::string& value, T* destination) {
 		if (!value.empty()) {
 			auto ss = std::stringstream{value};
 			ss >> *destination;
@@ -69,7 +69,7 @@ namespace {
 	}
 
 	template<>
-	void parse_value(std::string value, bool* destination) {
+	void parse_value(const std::string& value, bool* destination) {
 		if (!value.empty()) {
 			if (value == "1" || value == "true" ||
 				value == "on" || value == "yes") {
@@ -91,7 +91,7 @@ namespace {
 	std::enable_if_t<!is_stringstreamable<T>::value
 		&& is_stringstreamable<typename T::value_type>::value
 	>
-	parse_value(std::string value, T* destination) {
+	parse_value(const std::string& value, T* destination) {
 		if (!value.empty()) {
 			auto ss = std::stringstream{value};
 			typename T::value_type c;
@@ -108,7 +108,7 @@ namespace {
 		&& is_stringstreamable<typename T::key_type>::value
 		&& is_stringstreamable<typename T::mapped_type>::value
 	>
-	parse_value(std::string value, T* destination) {
+	parse_value(const std::string& value, T* destination) {
 		auto eq_pos = value.find('=');
 		if (eq_pos == std::string::npos) {
 			throw std::runtime_error("Value \""s + value
@@ -139,7 +139,7 @@ namespace {
 		&& is_stringstreamable<typename T::first_type>::value
 		&& is_stringstreamable<typename T::second_type>::value
 	>
-	parse_value(std::string value, T* destination) {
+	parse_value(const std::string& value, T* destination) {
 		auto eq_pos = value.find('=');
 		if (eq_pos == std::string::npos) {
 			throw std::runtime_error("Value \""s + value
@@ -199,7 +199,8 @@ namespace args {
 
 		option(const option&) = default;
 
-		option(std::string name, std::string short_name, std::string long_name_or_desc, std::string description,
+		option(const std::string& name, const std::string& short_name, const std::string& long_name_or_desc,
+				const std::string& description,
 				bool required, bool is_flag, std::function<void (const std::string&)> parse_fun)
 			: short_name(is_short_option(name) ? name : short_name),
 			non_conventional(is_non_conventional(name) ? name : ""),
@@ -221,31 +222,31 @@ namespace args {
 			}
 
 		template<typename T>
-		option(std::string name, T* destination)
+		option(const std::string& name, T* destination)
 			: option(name, "", "", "", false, std::is_same<T, bool>::value, create_parse_fun(destination)) {}
 
 		template<typename T>
-		option(required_t, std::string name, T* destination)
+		option(required_t, const std::string& name, T* destination)
 			: option(name, "", "", "", true, std::is_same<T, bool>::value, create_parse_fun(destination)) {}
 
 
 		template<typename T>
-		option(std::string short_name, std::string long_name_or_desc, T* destination)
+		option(const std::string& short_name, const std::string& long_name_or_desc, T* destination)
 			: option("", short_name, long_name_or_desc, "", false, std::is_same<T, bool>::value, create_parse_fun(destination)) {}
 
 		template<typename T>
-		option(required_t, std::string short_name, std::string long_name_or_desc, T* destination)
+		option(required_t, const std::string short_name, const std::string& long_name_or_desc, T* destination)
 			: option("", short_name, long_name_or_desc, "", true, std::is_same<T, bool>::value, create_parse_fun(destination)) {}
 
 		template<typename T>
-		option(std::string short_name, std::string long_name, std::string description, T* destination)
+		option(const std::string& short_name, const std::string& long_name, const std::string& description, T* destination)
 			: option("", short_name, long_name, description, false, std::is_same<T, bool>::value, create_parse_fun(destination)) {}
 
 		template<typename T>
-		option(required_t, std::string short_name, std::string long_name, std::string description, T* destination)
+		option(required_t, const std::string& short_name, const std::string& long_name, const std::string& description, T* destination)
 			: option("", short_name, long_name, description, true, std::is_same<T, bool>::value, create_parse_fun(destination)) {}
 
-		void parse(std::string value) {
+		void parse(const std::string& value) {
 			this->parse_fun(value);
 			this->exists = true;
 		}
@@ -269,30 +270,30 @@ namespace {
 			: parse_fun(parse) {}
 
 		template <typename T>
-		arg_internal(std::string name, T parse)
+		arg_internal(const std::string& name, T parse)
 			: name(name),
 			parse_fun(parse) {}
 
 		template <typename T>
-		arg_internal(std::string name, std::string description, T parse)
+		arg_internal(const std::string& name, const std::string& description, T parse)
 			: name(name),
 			description(description),
 			parse_fun(parse) {}
 
 		template <typename T>
-		arg_internal(args::required_t, std::string name, T parse)
+		arg_internal(args::required_t, const std::string& name, T parse)
 			: name(name),
 			required(true),
 			parse_fun(parse) {}
 
 		template <typename T>
-		arg_internal(args::required_t, std::string name, std::string description, T parse)
+		arg_internal(args::required_t, const std::string& name, const std::string& description, T parse)
 			: name(name),
 			description(description),
 			required(true),
 			parse_fun(parse) {}
 
-		void parse(std::string value) {
+		void parse(const std::string& value) {
 			this->parse_fun(value);
 			this->exists = true;
 		}
@@ -356,25 +357,25 @@ namespace {
 		}
 
 		template<typename T>
-		command_internal& arg(std::string name, T* destination) {
+		command_internal& arg(const std::string& name, T* destination) {
 			this->args.emplace_back(name, create_parse_fun(destination));
 			return *this;
 		}
 
 		template<typename T>
-		command_internal& arg(std::string name, std::string description, T* destination) {
+		command_internal& arg(const std::string& name, const std::string& description, T* destination) {
 			this->args.emplace_back(name, description, create_parse_fun(destination));
 			return *this;
 		}
 
 		template<typename T>
-		command_internal& arg(args::required_t, std::string name, T* destination) {
+		command_internal& arg(args::required_t, const std::string& name, T* destination) {
 			this->args.emplace_back(args::required, name, create_parse_fun(destination));
 			return *this;
 		}
 
 		template<typename T>
-		command_internal& arg(args::required_t, std::string name, std::string description, T* destination) {
+		command_internal& arg(args::required_t, const std::string& name, const std::string& description, T* destination) {
 			this->args.emplace_back(args::required, name, description, create_parse_fun(destination));
 			return *this;
 		}
@@ -386,25 +387,25 @@ namespace {
 		}
 
 		template<typename T, typename F>
-		command_internal& arg(std::string name, F handler) {
+		command_internal& arg(const std::string& name, F handler) {
 			this->args.emplace_back(name, create_parse_fun<T>(handler));
 			return *this;
 		}
 
 		template<typename T, typename F>
-		command_internal& arg(std::string name, std::string description, F handler) {
+		command_internal& arg(const std::string& name, const std::string& description, F handler) {
 			this->args.emplace_back(name, description, create_parse_fun<T>(handler));
 			return *this;
 		}
 
 		template<typename T, typename F>
-		command_internal& arg(args::required_t, std::string name, F handler) {
+		command_internal& arg(args::required_t, const std::string& name, F handler) {
 			this->args.emplace_back(args::required, name, create_parse_fun<T>(handler));
 			return *this;
 		}
 
 		template<typename T, typename F>
-		command_internal& arg(args::required_t, std::string name, std::string description, F handler) {
+		command_internal& arg(args::required_t, const std::string& name, const std::string& description, F handler) {
 			this->args.emplace_back(args::required, name, description, create_parse_fun<T>(handler));
 			return *this;
 		}
@@ -416,25 +417,25 @@ namespace {
 		}
 
 		template<typename T>
-		command_internal& rest(std::string name, T* destination) {
+		command_internal& rest(const std::string& name, T* destination) {
 			this->rest_args = {name, create_parse_fun(destination)};
 			return *this;
 		}
 
 		template<typename T>
-		command_internal& rest(std::string name, std::string description, T* destination) {
+		command_internal& rest(const std::string& name, const std::string& description, T* destination) {
 			this->rest_args = {name, description, create_parse_fun(destination)};
 			return *this;
 		}
 
 		template<typename T>
-		command_internal& rest(args::required_t, std::string name, T* destination) {
+		command_internal& rest(args::required_t, const std::string& name, T* destination) {
 			this->rest_args = {args::required, name, create_parse_fun(destination)};
 			return *this;
 		}
 
 		template<typename T>
-		command_internal& rest(args::required_t, std::string name, std::string description, T* destination) {
+		command_internal& rest(args::required_t, const std::string& name, const std::string& description, T* destination) {
 			this->rest_args = {args::required, name, description, create_parse_fun(destination)};
 			return *this;
 		}
@@ -446,25 +447,25 @@ namespace {
 		}
 
 		template<typename T, typename F>
-		command_internal& rest(std::string name, F handler) {
+		command_internal& rest(const std::string& name, F handler) {
 			this->rest_args = {name, create_parse_fun<T>(handler)};
 			return *this;
 		}
 
 		template<typename T, typename F>
-		command_internal& rest(std::string name, std::string description, F handler) {
+		command_internal& rest(const std::string& name, const std::string& description, F handler) {
 			this->rest_args = {name, description, create_parse_fun<T>(handler)};
 			return *this;
 		}
 
 		template<typename T, typename F>
-		command_internal& rest(args::required_t, std::string name, F handler) {
+		command_internal& rest(args::required_t, const std::string& name, F handler) {
 			this->rest_args = {args::required, name, create_parse_fun<T>(handler)};
 			return *this;
 		}
 
 		template<typename T, typename F>
-		command_internal& rest(args::required_t, std::string name, std::string description, F handler) {
+		command_internal& rest(args::required_t, const std::string& name, const std::string& description, F handler) {
 			this->rest_args = {args::required, name, description, create_parse_fun<T>(handler)};
 			return *this;
 		}
@@ -475,78 +476,78 @@ namespace {
 		}
 
 		template<typename T>
-		command_internal& option(std::string name, T* destination) {
+		command_internal& option(const std::string& name, T* destination) {
 			this->options.emplace_back(name, destination);
 			return *this;
 		}
 
 		template<typename T>
-		command_internal& option(args::required_t, std::string name, T* destination) {
+		command_internal& option(args::required_t, const std::string& name, T* destination) {
 			this->options.emplace_back(args::required, name, destination);
 			return *this;
 		}
 
 		template<typename T, typename F>
-		command_internal& option(std::string name, F handler) {
+		command_internal& option(const std::string& name, F handler) {
 			this->options.emplace_back(name, "", "", "",
 					false, std::is_same<T, bool>::value, create_parse_fun<T>(handler));
 			return *this;
 		}
 
 		template<typename T, typename F>
-		command_internal& option(args::required_t, std::string name, F handler) {
+		command_internal& option(args::required_t, const std::string& name, F handler) {
 			this->options.emplace_back(name, "", "", "",
 					true, std::is_same<T, bool>::value, create_parse_fun<T>(handler));
 			return *this;
 		}
 
 		template<typename T>
-		command_internal& option(std::string short_name, std::string long_name_or_desc, T* destination) {
+		command_internal& option(const std::string& short_name, const std::string& long_name_or_desc, T* destination) {
 			this->options.emplace_back(short_name, long_name_or_desc, destination);
 			return *this;
 		}
 
 		template<typename T>
-		command_internal& option(std::string short_name, std::string long_name, std::string description, T* destination) {
+		command_internal& option(const std::string& short_name, const std::string& long_name, const std::string& description, T* destination) {
 			this->options.emplace_back(short_name, long_name, description, destination);
 			return *this;
 		}
 
 		template<typename T>
-		command_internal& option(args::required_t, std::string short_name, std::string long_name_or_desc, T* destination) {
+		command_internal& option(args::required_t, const std::string& short_name, const std::string& long_name_or_desc, T* destination) {
 			this->options.emplace_back(args::required, short_name, long_name_or_desc, destination);
 			return *this;
 		}
 
 		template<typename T>
-		command_internal& option(args::required_t, std::string short_name, std::string long_name, std::string description, T* destination) {
+		command_internal& option(args::required_t, const std::string& short_name, const std::string& long_name, const std::string& description, T* destination) {
 			this->options.emplace_back(args::required, short_name, long_name, description, destination);
 			return *this;
 		}
 
 		template<typename T, typename F>
-		command_internal& option(std::string short_name, std::string long_name_or_desc, F handler) {
+		command_internal& option(const std::string& short_name, const std::string& long_name_or_desc, F handler) {
 			this->options.emplace_back("", short_name, long_name_or_desc, "",
 					false, std::is_same<T, bool>::value, create_parse_fun<T>(handler));
 			return *this;
 		}
 
 		template<typename T, typename F>
-		command_internal& option(std::string short_name, std::string long_name, std::string description, F handler) {
+		command_internal& option(const std::string& short_name, const std::string& long_name, const std::string& description, F handler) {
 			this->options.emplace_back("", short_name, long_name, description,
 					false, std::is_same<T, bool>::value, create_parse_fun<T>(handler));
 			return *this;
 		}
 
 		template<typename T, typename F>
-		command_internal& option(args::required_t, std::string short_name, std::string long_name_or_desc, F handler) {
+		command_internal& option(args::required_t, const std::string& short_name, const std::string& long_name_or_desc, F handler) {
 			this->options.emplace_back("", short_name, long_name_or_desc, "",
 					true, std::is_same<T, bool>::value, create_parse_fun<T>(handler));
 			return *this;
 		}
 
 		template<typename T, typename F>
-		command_internal& option(args::required_t, std::string short_name, std::string long_name, std::string description, F handler) {
+		command_internal& option(args::required_t, const std::string& short_name, const std::string& long_name, const std::string& description, F handler) {
 			this->options.emplace_back("", short_name, long_name, description,
 					true, std::is_same<T, bool>::value, create_parse_fun<T>(handler));
 			return *this;
@@ -581,7 +582,7 @@ namespace {
 		return name;
 	}
 
-	std::string command_print_name(const command_internal& command, std::string delimiter = ", "s) {
+	std::string command_print_name(const command_internal& command, const std::string& delimiter = ", "s) {
 		auto name = ""s;
 		auto first = true;
 		if (!command.name.empty()) {
@@ -600,7 +601,7 @@ namespace {
 	std::string format_usage_options(const std::vector<args::option>& options) {
 		auto ss = std::stringstream{};
 		auto has_optional_options = false;
-		std::for_each(std::begin(options), std::end(options), [&](auto o) {
+		std::for_each(std::begin(options), std::end(options), [&](auto& o) {
 			if (o.required) {
 				auto name = ""s;
 				if (!o.long_name.empty()) {
@@ -623,7 +624,7 @@ namespace {
 
 	std::string format_usage_args(const std::vector<arg_internal>& args, const arg_internal& rest_args) {
 		auto ss = std::stringstream{};
-		std::for_each(std::begin(args), std::end(args), [&](auto a) {
+		std::for_each(std::begin(args), std::end(args), [&](auto& a) {
 			auto arg_name = a.name.empty() ? "ARG" : a.name;
 			if (a.required) {
 				ss << " <" << arg_name << ">";
@@ -645,7 +646,7 @@ namespace {
 	std::string format_options_description(const std::vector<args::option>& options, const std::string& indentation = default_indentation) {
 		auto ss = std::stringstream{};
 		auto first = true;
-		std::for_each(std::begin(options), std::end(options), [&](auto o) {
+		std::for_each(std::begin(options), std::end(options), [&](auto& o) {
 			if (!first) {
 				ss << "\n";
 			}
@@ -677,7 +678,7 @@ namespace {
 
 		auto first = true;
 		if (args.size() > 0) {
-			std::for_each(std::begin(args), std::end(args), [&](auto a) {
+			std::for_each(std::begin(args), std::end(args), [&](auto& a) {
 				if (!first) {
 					ss << "\n";
 				}
@@ -725,7 +726,7 @@ namespace args {
 		public:
 		const std::string option;
 
-		invalid_option(std::string option)
+		invalid_option(const std::string& option)
 			: runtime_error("Invalid option \""s + option + "\"."),
 			option(option) {}
 
@@ -736,7 +737,7 @@ namespace args {
 		const std::string option;
 		const std::string value;
 
-		invalid_option_value(std::string option, std::string value, std::string value_what, std::string what = ""s)
+		invalid_option_value(const std::string& option, const std::string& value, const std::string& value_what, const std::string& what = ""s)
 			: runtime_error(what.empty() ? "Invalid value for option \""s + option + "\". " + value_what : what),
 			option(option),
 			value(value) {}
@@ -744,9 +745,9 @@ namespace args {
 
 	class invalid_command_option_value : public invalid_option_value {
 		public:
-		const std::string command;
+		const std::string& command;
 
-		invalid_command_option_value(std::string command, std::string option, std::string value, std::string value_what)
+		invalid_command_option_value(const std::string& command, const std::string& option, const std::string& value, const std::string& value_what)
 			: invalid_option_value(option, value, "", "Invalid value for command \""s + command + "\" option \""s + option + "\". " + value_what),
 			command(command) {}
 	};
@@ -756,7 +757,7 @@ namespace args {
 		const std::string arg;
 		const std::string value;
 
-		invalid_arg_value(std::string arg, std::string value, std::string value_what, std::string what = ""s)
+		invalid_arg_value(const std::string& arg, const std::string& value, const std::string& value_what, const std::string& what = ""s)
 			: runtime_error(what.empty() ? "Invalid value for argument \""s + arg + "\". " + value_what : what),
 			arg(arg),
 			value(value) {}
@@ -766,7 +767,7 @@ namespace args {
 		public:
 		const std::string command;
 
-		invalid_command_arg_value(std::string command, std::string arg, std::string value, std::string value_what)
+		invalid_command_arg_value(const std::string& command, const std::string& arg, const std::string& value, const std::string& value_what)
 			: invalid_arg_value(arg, value, "", "Invalid value for command \""s + command + "\" argument  \""s + arg + "\". " + value_what),
 			command(command) {}
 	};
@@ -775,7 +776,7 @@ namespace args {
 		public:
 		const std::string value;
 
-		unexpected_arg(std::string value)
+		unexpected_arg(const std::string& value)
 			: runtime_error("Unexpected argument \""s + value + "\"."s),
 			value(value) {}
 	};
@@ -784,7 +785,7 @@ namespace args {
 		public:
 		const std::string arg;
 
-		missing_arg(std::string arg, std::string what = ""s)
+		missing_arg(const std::string& arg, const std::string& what = ""s)
 			: runtime_error(what.empty() ? "Argument \""s + arg + "\" is required." : what),
 			arg(arg) {}
 	};
@@ -799,7 +800,7 @@ namespace args {
 		public:
 		const std::string command;
 
-		missing_command_arg(std::string command, std::string arg)
+		missing_command_arg(const std::string& command, const std::string& arg)
 			: missing_arg(arg, "Command \""s + command + "\" argument \""s + arg + "\" is required."),
 			command(command) {}
 	};
@@ -808,7 +809,7 @@ namespace args {
 		public:
 		const std::string option;
 
-		missing_option(std::string option, std::string what = ""s)
+		missing_option(const std::string& option, const std::string& what = ""s)
 			: runtime_error(what.empty() ? "Option \""s + option + "\" is required." : what),
 			option(option) {}
 	};
@@ -817,7 +818,7 @@ namespace args {
 		public:
 		const std::string command;
 
-		missing_command_option(std::string command, std::string option)
+		missing_command_option(const std::string& command, const std::string& option)
 			: missing_option(option, "Command \""s + command + "\" option \""s + option + "\" is required."),
 			command(command) {}
 	};
@@ -843,7 +844,7 @@ namespace args {
 
 			auto cmd_name = this->cmd_name.empty() ? "CMD" : this->cmd_name;
 			auto first = true;
-			std::for_each(std::begin(names), std::end(names), [&](auto name) {
+			std::for_each(std::begin(names), std::end(names), [&](auto& name) {
 				if (!first) {
 					ss << "\n";
 				}
@@ -883,7 +884,7 @@ namespace args {
 		}
 
 		command_internal& get_command_by_name(const std::string& command_name) {
-			auto command_it = std::find_if(std::begin(this->commands), std::end(this->commands), [&](auto c) {
+			auto command_it = std::find_if(std::begin(this->commands), std::end(this->commands), [&](auto& c) {
 				return c.name == command_name || c.alias == command_name;
 			});
 			if (command_it == std::end(this->commands)) {
@@ -922,25 +923,25 @@ namespace args {
 		}
 
 		template<typename T>
-		parser& arg(std::string name, T* destination) {
+		parser& arg(const std::string& name, T* destination) {
 			this->args.emplace_back(name, create_parse_fun(destination));
 			return *this;
 		}
 
 		template<typename T>
-		parser& arg(std::string name, std::string description, T* destination) {
+		parser& arg(const std::string& name, const std::string& description, T* destination) {
 			this->args.emplace_back(name, description, create_parse_fun(destination));
 			return *this;
 		}
 
 		template<typename T>
-		parser& arg(args::required_t, std::string name, T* destination) {
+		parser& arg(args::required_t, const std::string& name, T* destination) {
 			this->args.emplace_back(args::required, name, create_parse_fun(destination));
 			return *this;
 		}
 
 		template<typename T>
-		parser& arg(args::required_t, std::string name, std::string description, T* destination) {
+		parser& arg(args::required_t, const std::string& name, const std::string& description, T* destination) {
 			this->args.emplace_back(args::required, name, description, create_parse_fun(destination));
 			return *this;
 		}
@@ -952,25 +953,25 @@ namespace args {
 		}
 
 		template<typename T, typename F>
-		parser& arg(std::string name, F handler) {
+		parser& arg(const std::string& name, F handler) {
 			this->args.emplace_back(name, create_parse_fun<T>(handler));
 			return *this;
 		}
 
 		template<typename T, typename F>
-		parser& arg(std::string name, std::string description, F handler) {
+		parser& arg(const std::string& name, const std::string& description, F handler) {
 			this->args.emplace_back(name, description, create_parse_fun<T>(handler));
 			return *this;
 		}
 
 		template<typename T, typename F>
-		parser& arg(args::required_t, std::string name, F handler) {
+		parser& arg(args::required_t, const std::string& name, F handler) {
 			this->args.emplace_back(args::required, name, create_parse_fun<T>(handler));
 			return *this;
 		}
 
 		template<typename T, typename F>
-		parser& arg(args::required_t, std::string name, std::string description, F handler) {
+		parser& arg(args::required_t, const std::string& name, const std::string& description, F handler) {
 			this->args.emplace_back(args::required, name, description, create_parse_fun<T>(handler));
 			return *this;
 		}
@@ -982,25 +983,25 @@ namespace args {
 		}
 
 		template<typename T>
-		parser& rest(std::string name, T* destination) {
+		parser& rest(const std::string& name, T* destination) {
 			this->rest_args = {name, create_parse_fun(destination)};
 			return *this;
 		}
 
 		template<typename T>
-		parser& rest(std::string name, std::string description, T* destination) {
+		parser& rest(const std::string& name, const std::string& description, T* destination) {
 			this->rest_args = {name, description, create_parse_fun(destination)};
 			return *this;
 		}
 
 		template<typename T>
-		parser& rest(args::required_t, std::string name, T* destination) {
+		parser& rest(args::required_t, const std::string& name, T* destination) {
 			this->rest_args = {args::required, name, create_parse_fun(destination)};
 			return *this;
 		}
 
 		template<typename T>
-		parser& rest(args::required_t, std::string name, std::string description, T* destination) {
+		parser& rest(args::required_t, const std::string& name, const std::string& description, T* destination) {
 			this->rest_args = {args::required, name, description, create_parse_fun(destination)};
 			return *this;
 		}
@@ -1012,25 +1013,25 @@ namespace args {
 		}
 
 		template<typename T, typename F>
-		parser& rest(std::string name, F handler) {
+		parser& rest(const std::string& name, F handler) {
 			this->rest_args = {name, create_parse_fun<T>(handler)};
 			return *this;
 		}
 
 		template<typename T, typename F>
-		parser& rest(std::string name, std::string description, F handler) {
+		parser& rest(const std::string& name, const std::string& description, F handler) {
 			this->rest_args = {name, description, create_parse_fun<T>(handler)};
 			return *this;
 		}
 
 		template<typename T, typename F>
-		parser& rest(args::required_t, std::string name, F handler) {
+		parser& rest(args::required_t, const std::string& name, F handler) {
 			this->rest_args = {args::required, name, create_parse_fun<T>(handler)};
 			return *this;
 		}
 
 		template<typename T, typename F>
-		parser& rest(args::required_t, std::string name, std::string description, F handler) {
+		parser& rest(args::required_t, const std::string& name, const std::string& description, F handler) {
 			this->rest_args = {args::required, name, description, create_parse_fun<T>(handler)};
 			return *this;
 		}
@@ -1041,104 +1042,104 @@ namespace args {
 		}
 
 		template<typename T>
-		parser& option(std::string name, T* destination) {
+		parser& option(const std::string& name, T* destination) {
 			this->options.emplace_back(name, destination);
 			return *this;
 		}
 
 		template<typename T>
-		parser& option(args::required_t, std::string name, T* destination) {
+		parser& option(args::required_t, const std::string& name, T* destination) {
 			this->options.emplace_back(args::required, name, destination);
 			return *this;
 		}
 
 		template<typename T, typename F>
-		parser& option(std::string name, F handler) {
+		parser& option(const std::string& name, F handler) {
 			this->options.emplace_back(name, "", "", "",
 					false, std::is_same<T, bool>::value, create_parse_fun<T>(handler));
 			return *this;
 		}
 
 		template<typename T, typename F>
-		parser& option(args::required_t, std::string name, F handler) {
+		parser& option(args::required_t, const std::string& name, F handler) {
 			this->options.emplace_back(name, "", "", "",
 					true, std::is_same<T, bool>::value, create_parse_fun<T>(handler));
 			return *this;
 		}
 
 		template<typename T>
-		parser& option(std::string short_name, std::string long_name_or_desc, T* destination) {
+		parser& option(const std::string& short_name, const std::string& long_name_or_desc, T* destination) {
 			this->options.emplace_back(short_name, long_name_or_desc, destination);
 			return *this;
 		}
 
 		template<typename T>
-		parser& option(std::string short_name, std::string long_name, std::string description, T* destination) {
+		parser& option(const std::string& short_name, const std::string& long_name, const std::string& description, T* destination) {
 			this->options.emplace_back(short_name, long_name, description, destination);
 			return *this;
 		}
 
 		template<typename T>
-		parser& option(args::required_t, std::string short_name, std::string long_name_or_desc, T* destination) {
+		parser& option(args::required_t, const std::string& short_name, const std::string& long_name_or_desc, T* destination) {
 			this->options.emplace_back(args::required, short_name, long_name_or_desc, destination);
 			return *this;
 		}
 
 		template<typename T>
-		parser& option(args::required_t, std::string short_name, std::string long_name, std::string description, T* destination) {
+		parser& option(args::required_t, const std::string& short_name, const std::string& long_name, const std::string& description, T* destination) {
 			this->options.emplace_back(args::required, short_name, long_name, description, destination);
 			return *this;
 		}
 
 		template<typename T, typename F>
-		parser& option(std::string short_name, std::string long_name_or_desc, F handler) {
+		parser& option(const std::string& short_name, const std::string& long_name_or_desc, F handler) {
 			this->options.emplace_back("", short_name, long_name_or_desc, "",
 					false, std::is_same<T, bool>::value, create_parse_fun<T>(handler));
 			return *this;
 		}
 
 		template<typename T, typename F>
-		parser& option(std::string short_name, std::string long_name, std::string description, F handler) {
+		parser& option(const std::string& short_name, const std::string& long_name, const std::string& description, F handler) {
 			this->options.emplace_back("", short_name, long_name, description,
 					false, std::is_same<T, bool>::value, create_parse_fun<T>(handler));
 			return *this;
 		}
 
 		template<typename T, typename F>
-		parser& option(args::required_t, std::string short_name, std::string long_name_or_desc, F handler) {
+		parser& option(args::required_t, const std::string& short_name, const std::string& long_name_or_desc, F handler) {
 			this->options.emplace_back("", short_name, long_name_or_desc, "",
 					true, std::is_same<T, bool>::value, create_parse_fun<T>(handler));
 			return *this;
 		}
 
 		template<typename T, typename F>
-		parser& option(args::required_t, std::string short_name, std::string long_name, std::string description, F handler) {
+		parser& option(args::required_t, const std::string& short_name, const std::string& long_name, const std::string& description, F handler) {
 			this->options.emplace_back("", short_name, long_name, description,
 					true, std::is_same<T, bool>::value, create_parse_fun<T>(handler));
 			return *this;
 		}
 
-		command_internal& command(std::string name) {
+		command_internal& command(const std::string& name) {
 			return this->commands.emplace_back(name);
 		}
 
-		command_internal& command(std::string name, std::string alias_or_desc) {
+		command_internal& command(const std::string& name, const std::string& alias_or_desc) {
 			return this->commands.emplace_back(name, alias_or_desc);
 		}
 
-		command_internal& command(std::string name, std::string alias, std::string description) {
+		command_internal& command(const std::string& name, const std::string& alias, const std::string& description) {
 			return this->commands.emplace_back(name, alias, description);
 		}
 
-		command_internal& command(std::string name, bool* destination) {
+		command_internal& command(const std::string& name, bool* destination) {
 			return this->commands.emplace_back(name, destination);
 		}
 
-		command_internal& command(std::string name, std::string alias_or_desc, bool* destination) {
+		command_internal& command(const std::string& name, const std::string& alias_or_desc, bool* destination) {
 			return this->commands.emplace_back(name, alias_or_desc, destination);
 		}
 
-		command_internal& command(std::string name, std::string alias, std::string description, bool* destination) {
+		command_internal& command(const std::string& name, const std::string& alias, const std::string& description, bool* destination) {
 			return this->commands.emplace_back(name, alias, destination);
 		}
 
@@ -1150,7 +1151,7 @@ namespace args {
 
 			auto command_it = std::end(this->commands);
 			auto is_command_option = false;
-			auto find_option_if = [&](const std::function<bool (args::option o)>& pred) -> args::option* {
+			auto find_option_if = [&](const std::function<bool (args::option& o)>& pred) -> args::option* {
 				if (command_it != std::end(this->commands)) {
 					auto command_option_it = std::find_if(std::begin(command_it->options), std::end(command_it->options), pred);
 					if (command_option_it != std::end(command_it->options)) {
@@ -1192,7 +1193,7 @@ namespace args {
 						}
 					}
 
-					auto option_it = find_option_if([&](auto o) {
+					auto option_it = find_option_if([&](auto& o) {
 						return (!o.short_name.empty() && arg->starts_with(o.short_name))
 							|| (!o.long_name.empty() && arg->starts_with(o.long_name))
 							|| (!o.non_conventional.empty() && arg->starts_with(o.non_conventional));
@@ -1200,7 +1201,7 @@ namespace args {
 
 					if (!option_it && arg->starts_with("--no-")) {
 						auto name = "--"s + arg->substr(5);
-						option_it = find_option_if([&](auto o) {
+						option_it = find_option_if([&](auto& o) {
 							return !o.long_name.empty() && o.long_name == name;
 						});
 
@@ -1273,17 +1274,17 @@ namespace args {
 						} else if (!option_it->short_name.empty() && arg->starts_with(option_it->short_name)
 								&& option_it->is_flag) {
 
-							auto is_short_grouped = std::all_of(std::begin(*arg) + 1, std::end(*arg), [&](auto c) {
+							auto is_short_grouped = std::all_of(std::begin(*arg) + 1, std::end(*arg), [&](auto& c) {
 								auto name = "-"s + c;
-								auto option_it = find_option_if([&](auto o) {
+								auto option_it = find_option_if([&](auto& o) {
 									return o.short_name == name;
 								});
 								return option_it && option_it->is_flag;
 							});
 							if (is_short_grouped) {
-								std::for_each(std::begin(*arg) + 1, std::end(*arg), [&](auto c) {
+								std::for_each(std::begin(*arg) + 1, std::end(*arg), [&](auto& c) {
 									auto name = "-"s + c;
-									auto option_it = find_option_if([&](auto o) {
+									auto option_it = find_option_if([&](auto& o) {
 										return o.short_name == name;
 									});
 									option_it->parse("1");
@@ -1316,7 +1317,7 @@ namespace args {
 				}
 
 				if (!args_only && command_it == std::end(this->commands)) {
-					auto prefix_it = std::find_if(std::begin(this->commands), std::end(this->commands), [&](auto c) {
+					auto prefix_it = std::find_if(std::begin(this->commands), std::end(this->commands), [&](auto& c) {
 						return arg->starts_with(c.name) || arg->starts_with(c.alias);
 					});
 					if (prefix_it != std::end(this->commands)) {
@@ -1391,7 +1392,7 @@ namespace args {
 					throw missing_command{};
 			}
 
-			auto missing_option_it = std::find_if(std::begin(this->options), std::end(this->options), [](auto o) {
+			auto missing_option_it = std::find_if(std::begin(this->options), std::end(this->options), [](auto& o) {
 				return o.required && !o.exists;
 			});
 
@@ -1399,7 +1400,7 @@ namespace args {
 				throw missing_option{option_print_name(*missing_option_it)};
 			}
 
-			auto missing_arg_it = std::find_if(std::begin(this->args), std::end(this->args), [](auto a) {
+			auto missing_arg_it = std::find_if(std::begin(this->args), std::end(this->args), [](auto& a) {
 				return a.required && !a.exists;
 			});
 
@@ -1412,7 +1413,7 @@ namespace args {
 			}
 
 			if (command_it != std::end(this->commands)) {
-				auto missing_command_option_it = std::find_if(std::begin(command_it->options), std::end(command_it->options), [](auto o) {
+				auto missing_command_option_it = std::find_if(std::begin(command_it->options), std::end(command_it->options), [](auto& o) {
 					return o.required && !o.exists;
 				});
 
@@ -1424,7 +1425,7 @@ namespace args {
 					command_it->action_fun();
 				}
 
-				auto missing_command_arg_it = std::find_if(std::begin(command_it->args), std::end(command_it->args), [](auto a) {
+				auto missing_command_arg_it = std::find_if(std::begin(command_it->args), std::end(command_it->args), [](auto& a) {
 					return a.required && !a.exists;
 				});
 
@@ -1444,7 +1445,7 @@ namespace args {
 
 			if (this->command_required_f) {
 				auto first = true;
-				std::for_each(std::begin(this->commands), std::end(this->commands), [&](auto c) {
+				std::for_each(std::begin(this->commands), std::end(this->commands), [&](auto& c) {
 					if (!first) {
 						ss << "\n";
 					}
@@ -1475,7 +1476,7 @@ namespace args {
 		std::string format_commands(const std::string& indentation = default_indentation) {
 			auto ss = std::stringstream{};
 			auto first = true;
-			std::for_each(std::begin(this->commands), std::end(this->commands), [&](auto c) {
+			std::for_each(std::begin(this->commands), std::end(this->commands), [&](auto& c) {
 				if (!first) {
 					ss << "\n";
 				}
