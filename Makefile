@@ -67,17 +67,29 @@ examples: $(EXAMPLES)
 	./examples/required-errors -a -b arg1 rest cmd -c -d carg1
 	@echo
 	./examples/command-required-error
+	@echo
+	./examples/help --help
+	@echo
+	./examples/help-required-command --help
 
-%: %.cpp args.h
-	$(CXX) $(CFLAGS) -o $@ $<
-
+.PHONY: test-help
+test-help: test/help test/help-required-command test/help-custom
+	./test/help --help
+	@echo
+	./test/help-required-command --help
+	@echo
+	./test/help-required-command list --help
+	@echo
+	./test/help-required-command get --help
+	@echo
+	./test/help-custom --help
 
 .PHONY: test
 test: test/test
 	./test/test
 
-test/test: test/test.cpp args.h
-	$(CXX) $(CFLAGS) -o $@ test/test.cpp
+%: %.cpp args.h
+	$(CXX) $(CFLAGS) -o $@ $<
 
 .PHONY: clean
 clean:

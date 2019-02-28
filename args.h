@@ -17,9 +17,12 @@
 #include <string>
 #include <map>
 #include <stdexcept>
-#include <iostream>
 #include <iterator>
 #include <optional>
+#include <iostream>
+#include <iomanip>
+#include <ios>
+#include <cstdlib>
 
 using namespace std::literals;
 
@@ -175,6 +178,9 @@ namespace {
 			handler(destination);
 		};
 	}
+
+	auto max_label_width = 16;
+	auto default_indentation = "      "s;
 }
 
 namespace args {
@@ -575,7 +581,7 @@ namespace {
 		return name;
 	}
 
-	std::string command_print_name(const command_internal& command) {
+	std::string command_print_name(const command_internal& command, std::string delimiter = ", "s) {
 		auto name = ""s;
 		auto first = true;
 		if (!command.name.empty()) {
@@ -584,13 +590,132 @@ namespace {
 		}
 		if (!command.alias.empty()) {
 			if (!first) {
-				name += ", "s;
+				name += delimiter;
 			}
 			name += command.alias;
 		}
 		return name;
 	}
 
+	std::string format_usage_options(const std::vector<args::option>& options) {
+		auto ss = std::stringstream{};
+		auto has_optional_options = false;
+		std::for_each(std::begin(options), std::end(options), [&](auto o) {
+			if (o.required) {
+				auto name = ""s;
+				if (!o.long_name.empty()) {
+					name = o.long_name;
+				} else if (!o.short_name.empty()) {
+					name = o.short_name;
+				} else {
+					name = o.non_conventional;
+				}
+				ss << " " << name << "=value";
+			} else {
+				has_optional_options = true;
+			}
+		});
+		if (has_optional_options) {
+			ss << " [options]";
+		}
+		return ss.str();
+	}
+
+	std::string format_usage_args(const std::vector<arg_internal>& args, const arg_internal& rest_args) {
+		auto ss = std::stringstream{};
+		std::for_each(std::begin(args), std::end(args), [&](auto a) {
+			auto arg_name = a.name.empty() ? "ARG" : a.name;
+			if (a.required) {
+				ss << " <" << arg_name << ">";
+			} else {
+				ss << " [<" << arg_name << ">]";
+			}
+		});
+		if (rest_args.parse_fun) {
+			auto arg_name = rest_args.name.empty() ? "REST" : rest_args.name;
+			if (rest_args.required) {
+				ss << " <" << arg_name << ">";
+			} else {
+				ss << " [<" << arg_name << ">]";
+			}
+		}
+		return ss.str();
+	}
+
+	std::string format_options_description(const std::vector<args::option>& options, const std::string& indentation = default_indentation) {
+		auto ss = std::stringstream{};
+		auto first = true;
+		std::for_each(std::begin(options), std::end(options), [&](auto o) {
+			if (!first) {
+				ss << "\n";
+			}
+			first = false;
+			auto name = option_print_name(o);
+			if (name.size() <= max_label_width) {
+				ss << indentation << std::left << std::setw(max_label_width) << name << std::setw(0);
+				ss << "  ";
+			} else {
+				ss << indentation << name;
+				ss << "\n" << indentation << indentation;
+			}
+
+			if (o.required) {
+				ss << "Required! ";
+			}
+
+			if (!o.description.empty()) {
+				ss << o.description;
+			}
+		});
+
+		ss << "\n";
+		return ss.str();
+	}
+
+	std::string format_args_description(const std::vector<arg_internal>& args, const arg_internal& rest_args, const std::string& indentation) {
+		auto ss = std::stringstream{};
+
+		auto first = true;
+		if (args.size() > 0) {
+			std::for_each(std::begin(args), std::end(args), [&](auto a) {
+				if (!first) {
+					ss << "\n";
+				}
+				first = false;
+				if (a.name.size() <= max_label_width) {
+					ss << indentation << std::left << std::setw(max_label_width) << a.name << std::setw(0);
+					ss << "  ";
+				} else {
+					ss << indentation << a.name;
+					ss << "\n" << "     " << indentation;
+				}
+
+				if (!a.description.empty()) {
+					ss << a.description;
+				}
+			});
+		}
+
+		if (rest_args.parse_fun) {
+			if (!first) {
+				ss << "\n";
+			}
+			if (rest_args.name.size() <= max_label_width) {
+				ss << indentation << std::left << std::setw(max_label_width) << rest_args.name << std::setw(0);
+				ss << "  ";
+			} else {
+				ss << indentation << rest_args.name;
+				ss << "\n" << indentation << indentation;
+			}
+
+			if (!rest_args.description.empty()) {
+				ss << rest_args.description;
+			}
+		}
+
+		ss << "\n";
+		return ss.str();
+	}
 }
 
 namespace args {
@@ -700,16 +825,93 @@ namespace args {
 	class parser {
 		private:
 
-		bool is_command_required = false;
+		std::string cmd_name = "";
+		std::string cmd_description = "";
+		bool command_required_f = false;
 		std::vector<option> options = {};
 		std::vector<arg_internal> args = {};
 		arg_internal rest_args = {};
 		std::vector<command_internal> commands = {};
+		std::function<void ()> help_fun;
+
+		std::string format_command_usage(const command_internal& c, const std::string& indentation = default_indentation) {
+			auto ss = std::stringstream{};
+			auto names = std::vector<std::string>{c.name};
+			if (!c.alias.empty()) {
+				names.push_back(c.alias);
+			}
+
+			auto cmd_name = this->cmd_name.empty() ? "CMD" : this->cmd_name;
+			auto first = true;
+			std::for_each(std::begin(names), std::end(names), [&](auto name) {
+				if (!first) {
+					ss << "\n";
+				}
+				first = false;
+				ss << indentation << cmd_name;
+				ss << format_usage_options(this->options);
+				ss << format_usage_args(this->args, this->rest_args);
+				ss << " " << name;
+				ss << format_usage_options(c.options);
+				ss << format_usage_args(c.args, c.rest_args);
+			});
+			ss << "\n";
+			return ss.str();
+		}
+
+		std::string format_command_help(const command_internal& c, const std::string& indentation = default_indentation) {
+			auto ss = std::stringstream{};
+			ss << "USAGE\n";
+			ss << format_command_usage(c, indentation);
+
+			if (!c.description.empty()) {
+				ss << "\nDESCRIPTION\n";
+				ss << indentation << c.description << "\n";
+			}
+
+			if (c.args.size() > 0 || c.rest_args.parse_fun) {
+				ss << "\nARGUMENTS\n";
+				ss << format_args_description(c.args, c.rest_args, indentation);
+			}
+
+			if (c.options.size() > 0) {
+				ss << "\nOPTIONS\n";
+				ss << format_options_description(c.options, indentation);
+			}
+
+			return ss.str();
+		}
+
+		command_internal& get_command_by_name(const std::string& command_name) {
+			auto command_it = std::find_if(std::begin(this->commands), std::end(this->commands), [&](auto c) {
+				return c.name == command_name || c.alias == command_name;
+			});
+			if (command_it == std::end(this->commands)) {
+				throw std::runtime_error("No such command \"" + command_name + "\"");
+			}
+			return *command_it;
+		}
 
 		public:
 
+		parser& name(const std::string& name) {
+			this->cmd_name = name;
+			return *this;
+		}
+
+		parser& description(const std::string& description) {
+			this->cmd_description = description;
+			return *this;
+		}
+
 		parser& command_required() {
-			this->is_command_required = true;
+			this->command_required_f = true;
+			return *this;
+		}
+
+		template<typename F>
+		parser& help(F help_fun) {
+			this->help_fun = help_fun;
 			return *this;
 		}
 
@@ -976,6 +1178,20 @@ namespace args {
 				}
 
 				if (!args_only) {
+					if (*arg == "--help"s) {
+						if (this->help_fun) {
+							this->help_fun();
+							return;
+						} else {
+							if (command_it != std::end(this->commands)) {
+								std::cout << this->format_command_help(*command_it);
+							} else {
+								std::cout << this->format_help();
+							}
+							std::exit(0);
+						}
+					}
+
 					auto option_it = find_option_if([&](auto o) {
 						return (!o.short_name.empty() && arg->starts_with(o.short_name))
 							|| (!o.long_name.empty() && arg->starts_with(o.long_name))
@@ -1171,7 +1387,7 @@ namespace args {
 				}
 			}
 
-			if (this->is_command_required && command_it == std::end(this->commands)) {
+			if (this->command_required_f && command_it == std::end(this->commands)) {
 					throw missing_command{};
 			}
 
@@ -1220,6 +1436,121 @@ namespace args {
 					throw missing_command_arg{command_print_name(*command_it), command_it->rest_args.name};
 				}
 			}
+		}
+
+		std::string format_usage(const std::string& indentation = default_indentation) {
+			auto ss = std::stringstream{};
+			auto name = this->cmd_name.empty() ? "CMD" : this->cmd_name;
+
+			if (this->command_required_f) {
+				auto first = true;
+				std::for_each(std::begin(this->commands), std::end(this->commands), [&](auto c) {
+					if (!first) {
+						ss << "\n";
+					}
+					first = false;
+					ss << indentation << name;
+					ss << format_usage_options(this->options);
+					ss << format_usage_args(this->args, this->rest_args);
+					ss << " " << command_print_name(c, "|"s);
+					ss << format_usage_options(c.options);
+					ss << format_usage_args(c.args, c.rest_args);
+				});
+			} else {
+				ss << "  " << name;
+				ss << format_usage_options(this->options);
+				ss << format_usage_args(this->args, this->rest_args);
+				if (this->commands.size() > 0) {
+					if (this->command_required_f) {
+						ss << " command ...";
+					} else {
+						ss << " [command] ...";
+					}
+				}
+			}
+			ss << "\n";
+			return ss.str();
+		}
+
+		std::string format_commands(const std::string& indentation = default_indentation) {
+			auto ss = std::stringstream{};
+			auto first = true;
+			std::for_each(std::begin(this->commands), std::end(this->commands), [&](auto c) {
+				if (!first) {
+					ss << "\n";
+				}
+				first = false;
+				auto name = command_print_name(c);
+				if (name.size() <= max_label_width) {
+					ss << indentation << std::left << std::setw(max_label_width) << name << std::setw(0);
+					ss << "  ";
+				} else {
+					ss << indentation << name;
+					ss << "\n" << indentation << indentation;
+				}
+
+				if (!c.description.empty()) {
+					ss << c.description;
+				}
+			});
+			ss << "\n";
+			return ss.str();
+		}
+
+		std::string format_command_usage(const std::string& command_name, const std::string& indentation = default_indentation) {
+			auto& c = this->get_command_by_name(command_name);
+			return format_command_usage(c, indentation);
+		}
+
+		std::string format_args(const std::string& indentation = default_indentation) {
+			return format_args_description(this->args, this->rest_args, indentation);
+		}
+
+		std::string format_command_args(const std::string& command_name, const std::string& indentation = default_indentation) {
+			auto& c = this->get_command_by_name(command_name);
+			return format_args_description(c.args, c.rest_args, indentation);
+		}
+
+		std::string format_options(const std::string& indentation = default_indentation) {
+			return format_options_description(this->options, indentation);
+		}
+
+		std::string format_command_options(const std::string& command_name, const std::string& indentation = default_indentation) {
+			auto& c = this->get_command_by_name(command_name);
+			return format_options_description(c.options, indentation);
+		}
+
+		std::string format_help(const std::string& indentation = default_indentation) {
+			auto ss = std::stringstream{};
+			ss << "USAGE\n";
+			ss << this->format_usage(indentation);
+
+			if (!this->cmd_description.empty()) {
+				ss << "\nDESCRIPTION\n";
+				ss << indentation << this->cmd_description << "\n";
+			}
+
+			if (this->args.size() > 0 || this->rest_args.parse_fun) {
+				ss << "\nARGUMENTS\n";
+				ss << this->format_args(indentation);
+			}
+
+			if (this->options.size() > 0) {
+				ss << "\nOPTIONS\n";
+				ss << this->format_options(indentation);
+			}
+
+			if (this->commands.size() > 0) {
+				ss << "\nCOMMANDS\n";
+				ss << this->format_commands(indentation);
+			}
+
+			return ss.str();
+		}
+
+		std::string format_command_help(const std::string& command_name, const std::string& indentation = default_indentation) {
+			auto& c = this->get_command_by_name(command_name);
+			return format_command_help(c, indentation);
 		}
 	};
 
