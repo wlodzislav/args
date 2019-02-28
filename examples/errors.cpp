@@ -25,13 +25,13 @@ int main(int argc, const char** argv) {
 		.option("-f", &f);
 
 	p.command("cmd")
-		.option("--bool", &b)
-		.option("--num", &num)
-		.option("--str", &str)
-		.option("-v", &v)
-		.option("--mapk", &mapk)
-		.option("--mapv", &mapv)
-		.option("-f", &f);
+		.option("--cbool", &b)
+		.option("--cnum", &num)
+		.option("--cstr", &str)
+		.option("-cv", &v)
+		.option("--cmapk", &mapk)
+		.option("--cmapv", &mapv)
+		.option("-cf", &f);
 
 	try {
 		p.parse(argc, argv);

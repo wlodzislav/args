@@ -30,23 +30,23 @@ examples: $(EXAMPLES)
 	@echo
 	./examples/errors arg
 	@echo
-	./examples/errors cmd --num asd
+	./examples/errors cmd --cnum asd
 	@echo
-	./examples/errors cmd --bool=asd
+	./examples/errors cmd --cbool=asd
 	@echo
-	./examples/errors cmd -v asd
+	./examples/errors cmd -cv asd
 	@echo
-	./examples/errors cmd --mapk asd
+	./examples/errors cmd --cmapk asd
 	@echo
-	./examples/errors cmd --mapk a=1
+	./examples/errors cmd --cmapk a=1
 	@echo
-	./examples/errors cmd --mapv a=str
+	./examples/errors cmd --cmapv a=str
 	@echo
-	./examples/errors cmd --nop
+	./examples/errors cmd --cnop
 	@echo
-	./examples/errors cmd --num
+	./examples/errors cmd --cnum
 	@echo
-	./examples/errors cmd -fn
+	./examples/errors cmd -cfn
 	@echo
 	./examples/errors cmd arg
 	@echo

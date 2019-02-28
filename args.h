@@ -19,6 +19,7 @@
 #include <stdexcept>
 #include <iostream>
 #include <iterator>
+#include <optional>
 
 using namespace std::literals;
 
@@ -621,7 +622,7 @@ namespace args {
 		const std::string command;
 
 		invalid_command_option_value(std::string command, std::string option, std::string value, std::string value_what)
-			: invalid_option_value(option, value, "Invalid value for command \""s + command + "\" option \""s + option + "\". " + value_what),
+			: invalid_option_value(option, value, "", "Invalid value for command \""s + command + "\" option \""s + option + "\". " + value_what),
 			command(command) {}
 	};
 
@@ -641,7 +642,7 @@ namespace args {
 		const std::string command;
 
 		invalid_command_arg_value(std::string command, std::string arg, std::string value, std::string value_what)
-			: invalid_arg_value(arg, value, "Invalid value for command \""s + command + "\" argument  \""s + arg + "\". " + value_what),
+			: invalid_arg_value(arg, value, "", "Invalid value for command \""s + command + "\" argument  \""s + arg + "\". " + value_what),
 			command(command) {}
 	};
 
@@ -934,18 +935,22 @@ namespace args {
 			}
 
 			auto command_it = std::end(this->commands);
-			auto find_option_if = [&](const std::function<bool (args::option o)>& pred) {
+			auto is_command_option = false;
+			auto find_option_if = [&](const std::function<bool (args::option o)>& pred) -> args::option* {
 				if (command_it != std::end(this->commands)) {
 					auto command_option_it = std::find_if(std::begin(command_it->options), std::end(command_it->options), pred);
 					if (command_option_it != std::end(command_it->options)) {
-						return command_option_it;
+						is_command_option = true;
+						return &*command_option_it;
 					}
 				}
 				auto global_option_it = std::find_if(std::begin(this->options), std::end(this->options), pred);
 				if (global_option_it != std::end(this->options)) {
-					return global_option_it;
+					is_command_option = false;
+					return &*global_option_it;
 				} else {
-					return std::end(this->options);
+					is_command_option = false;
+					return nullptr;
 				}
 			};
 
@@ -965,27 +970,22 @@ namespace args {
 							|| (!o.non_conventional.empty() && arg->starts_with(o.non_conventional));
 					});
 
-					if (option_it == std::end(this->options) && arg->starts_with("--no-")) {
+					if (!option_it && arg->starts_with("--no-")) {
 						auto name = "--"s + arg->substr(5);
 						option_it = find_option_if([&](auto o) {
 							return !o.long_name.empty() && o.long_name == name;
 						});
 
-						if (option_it == std::end(this->options) || !option_it->is_flag) {
-							option_it = std::end(this->options);
+						if (!option_it || !option_it->is_flag) {
+							option_it = nullptr;
 						}
 					}
 
-					if (option_it == std::end(this->options) && arg->starts_with('-')) {
+					if (!option_it && arg->starts_with('-')) {
 						throw invalid_option{*arg};
 					}
 
-					if (option_it != std::end(this->options)) {
-						/*
-						auto is_command_option = command_it != std::end(this->commands)
-							&& std::find(std::begin(command_it->options), std::end(command_it->options), *option_it) != std::end(command_it->options);
-							*/
-
+					if (option_it) {
 						if (*arg == option_it->short_name || *arg == option_it->long_name
 								|| *arg == option_it->non_conventional) {
 
@@ -995,7 +995,11 @@ namespace args {
 									try {
 										option_it->parse(*next);
 									} catch (const std::runtime_error& err) {
-										throw invalid_option_value{*arg, *next, err.what()};
+										if (is_command_option) {
+											throw invalid_command_option_value{command_print_name(*command_it), *arg, *next, err.what()};
+										} else {
+											throw invalid_option_value{*arg, *next, err.what()};
+										}
 									}
 									arg++;
 								} else {
@@ -1007,12 +1011,20 @@ namespace args {
 									try {
 										option_it->parse(*next);
 									} catch (const std::runtime_error& err) {
-										throw invalid_option_value{*arg, *next, err.what()};
+										if (is_command_option) {
+											throw invalid_command_option_value{command_print_name(*command_it), *arg, *next, err.what()};
+										} else {
+											throw invalid_option_value{*arg, *next, err.what()};
+										}
 									}
 									arg++;
 								} else {
 									auto name = *arg;
-									throw invalid_option_value{name, "", "Value is empty."};
+									if (is_command_option) {
+										throw invalid_command_option_value{command_print_name(*command_it), name, "", "Value is empty."};
+									} else {
+										throw invalid_option_value{name, "", "Value is empty."};
+									}
 								}
 							}
 						} else if ((!option_it->short_name.empty() && arg->starts_with(option_it->short_name + "="))
@@ -1024,7 +1036,11 @@ namespace args {
 								option_it->parse(value);
 							} catch (const std::runtime_error& err) {
 								auto name = arg->substr(0, arg->find("="));
-								throw invalid_option_value{name, value, err.what()};
+								if (is_command_option) {
+									throw invalid_command_option_value{command_print_name(*command_it), name, value, err.what()};
+								} else {
+									throw invalid_option_value{name, value, err.what()};
+								}
 							}
 						} else if (!option_it->short_name.empty() && arg->starts_with(option_it->short_name)
 								&& option_it->is_flag) {
@@ -1034,7 +1050,7 @@ namespace args {
 								auto option_it = find_option_if([&](auto o) {
 									return o.short_name == name;
 								});
-								return option_it != std::end(this->options) && option_it->is_flag;
+								return option_it && option_it->is_flag;
 							});
 							if (is_short_grouped) {
 								std::for_each(std::begin(*arg) + 1, std::end(*arg), [&](auto c) {
@@ -1057,7 +1073,11 @@ namespace args {
 								option_it->parse(value);
 							} catch (const std::runtime_error& err) {
 								auto name = arg->substr(0, 2);
-								throw invalid_option_value{name, value, err.what()};
+								if (is_command_option) {
+									throw invalid_command_option_value{command_print_name(*command_it), name, value, err.what()};
+								} else {
+									throw invalid_option_value{name, value, err.what()};
+								}
 							}
 						} else if (arg->starts_with("--no-")) {
 							option_it->parse("0");
@@ -1104,7 +1124,7 @@ namespace args {
 							command_it->args[command_arg_index].parse(*arg);
 						} catch (const std::runtime_error& err) {
 							auto name = command_it->args[command_arg_index].name;
-							throw invalid_arg_value{name, *arg, err.what()};
+							throw invalid_command_arg_value{command_print_name(command_it->name), name, *arg, err.what()};
 						}
 						command_arg_index++;
 						continue;
@@ -1113,7 +1133,7 @@ namespace args {
 							command_it->rest_args.parse(*arg);
 						} catch (const std::runtime_error& err) {
 							auto name = command_it->rest_args.name;
-							throw invalid_arg_value{name, *arg, err.what()};
+							throw invalid_command_arg_value{command_print_name(command_it->name), name, *arg, err.what()};
 						}
 						continue;
 					}
@@ -1184,7 +1204,6 @@ namespace args {
 					throw missing_command_arg{command_print_name(*command_it), command_it->rest_args.name};
 				}
 			}
-
 		}
 	};
 
