@@ -5,8 +5,6 @@
 
 #include "../args.h"
 
-using std::vector;
-
 int main(int argc, const char** argv) {
 	auto a = false;
 	auto b = false;
@@ -20,7 +18,7 @@ int main(int argc, const char** argv) {
 	auto p = args::parser{}
 		.arg(args::required, "arg1", &arg1)
 		.rest(args::required, "rest", &rest)
-		.option(args::required, "-a", &b)
+		.option(args::required, "-a", &a)
 		.option(args::required, "-b", "--bb", &b);
 
 	p.command("cmd")

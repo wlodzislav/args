@@ -664,6 +664,12 @@ namespace args {
 			arg(arg) {}
 	};
 
+	class missing_command : public std::runtime_error {
+		public:
+		missing_command()
+			: runtime_error("Command is required.") {}
+	};
+
 	class missing_command_arg : public missing_arg {
 		public:
 		const std::string command;
@@ -694,12 +700,18 @@ namespace args {
 	class parser {
 		private:
 
+		bool is_command_required = false;
 		std::vector<option> options = {};
 		std::vector<arg_internal> args = {};
 		arg_internal rest_args = {};
 		std::vector<command_internal> commands = {};
 
 		public:
+
+		parser& command_required() {
+			this->is_command_required = true;
+			return *this;
+		}
 
 		template<typename T>
 		parser& arg(T* destination) {
@@ -1157,6 +1169,10 @@ namespace args {
 				} else {
 					throw unexpected_arg{*arg};
 				}
+			}
+
+			if (this->is_command_required && command_it == std::end(this->commands)) {
+					throw missing_command{};
 			}
 
 			auto missing_option_it = std::find_if(std::begin(this->options), std::end(this->options), [](auto o) {

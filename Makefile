@@ -65,6 +65,8 @@ examples: $(EXAMPLES)
 	./examples/required-errors -a -b arg1 rest cmd -c -d
 	@echo
 	./examples/required-errors -a -b arg1 rest cmd -c -d carg1
+	@echo
+	./examples/command-required-error
 
 %: %.cpp args.h
 	$(CXX) $(CFLAGS) -o $@ $<
