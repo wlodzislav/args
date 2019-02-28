@@ -2,3 +2,6 @@ examples/*
 !examples/*.*
 test/*
 !test/*.*
+**/.*
+!.gitignore
+
