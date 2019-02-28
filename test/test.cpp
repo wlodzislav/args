@@ -355,40 +355,6 @@ int main() {
 	});
 
 	describe("Commands", []{
-		it("name, destination", []{
-			const char* argv[] = {
-				"./exec",
-				"l"
-			};
-			const int argc = std::distance(std::begin(argv), std::end(argv));
-
-			auto list_called = false;
-
-			auto p = args::parser{};
-			p.command("l", &list_called);
-
-			p.parse(argc, argv);
-
-			ctl::expect_ok(list_called);
-		});
-
-		it("name, alias, destination", []{
-			const char* argv[] = {
-				"./exec",
-				"l"
-			};
-			const int argc = std::distance(std::begin(argv), std::end(argv));
-
-			auto list_called = false;
-
-			auto p = args::parser{};
-			p.command("l", "list", &list_called);
-
-			p.parse(argc, argv);
-
-			ctl::expect_ok(list_called);
-		});
-
 		it("multi word name", []{
 			const char* argv[] = {
 				"./exec",
@@ -409,24 +375,6 @@ int main() {
 
 			ctl::expect_ok(list_called);
 			ctl::expect_equal(rest, {"multi", "word"});
-		});
-
-		it("name, alias, action", []{
-			const char* argv[] = {
-				"./exec",
-				"list"
-			};
-			const int argc = std::distance(std::begin(argv), std::end(argv));
-
-			auto list_called = false;
-
-			auto p = args::parser{};
-			p.command("l", "list")
-				.action([&]{ list_called = true; });
-
-			p.parse(argc, argv);
-
-			ctl::expect_ok(list_called);
 		});
 
 		it("options", []{
@@ -1157,24 +1105,43 @@ int main() {
 				"--cc",
 				"-d",
 				"-e",
-				"--ff"
+				"--ff",
+				"-A",
+				"-B",
+				"--CC",
+				"-D",
+				"-E",
+				"--FF"
 			};
 			const int argc = std::distance(std::begin(argv), std::end(argv));
 
 			auto a = false;
+			auto A = false;
 			auto b = false;
+			auto B = false;
 			auto c = false;
+			auto C = false;
 			auto d = false;
+			auto D = false;
 			auto e = false;
+			auto E = false;
 			auto f = false;
+			auto F = false;
+			auto desc = "Description"s;
 
 			auto p = args::parser{}
 				.option("-a", &a)
+				.option("-A", desc, &A)
 				.option("-b", "--bb", &b)
+				.option("-B", "--BB", desc, &B)
 				.option("-c", "--cc", &c)
+				.option("-C", "--CC", desc, &C)
 				.option(args::required, "-d", &d)
+				.option(args::required, "-D", desc, &D)
 				.option(args::required, "-e", "--ee", &e)
-				.option(args::required, "-f", "--ff", &f);
+				.option(args::required, "-E", "--EE", desc, &E)
+				.option(args::required, "-f", "--ff", &f)
+				.option(args::required, "-F", "--FF", desc, &F);
 
 			p.parse(argc, argv);
 
@@ -1184,6 +1151,12 @@ int main() {
 			ctl::expect_equal(d, true);
 			ctl::expect_equal(e, true);
 			ctl::expect_equal(f, true);
+			ctl::expect_equal(A, true);
+			ctl::expect_equal(B, true);
+			ctl::expect_equal(C, true);
+			ctl::expect_equal(D, true);
+			ctl::expect_equal(E, true);
+			ctl::expect_equal(F, true);
 		});
 
 		it("options handlers", []{
@@ -1194,24 +1167,43 @@ int main() {
 				"--cc",
 				"-d",
 				"-e",
-				"--ff"
+				"--ff",
+				"-A",
+				"-B",
+				"--CC",
+				"-D",
+				"-E",
+				"--FF"
 			};
 			const int argc = std::distance(std::begin(argv), std::end(argv));
 
 			auto a = false;
+			auto A = false;
 			auto b = false;
+			auto B = false;
 			auto c = false;
+			auto C = false;
 			auto d = false;
+			auto D = false;
 			auto e = false;
+			auto E = false;
 			auto f = false;
+			auto F = false;
+			auto desc = "Description"s;
 
 			auto p = args::parser{}
 				.option<bool>("-a", [&](auto v) { a = v; })
+				.option<bool>("-A", desc, [&](auto v) { A = v; })
 				.option<bool>("-b", "--bb", [&](auto v) { b = v; })
+				.option<bool>("-B", "--BB", desc, [&](auto v) { B = v; })
 				.option<bool>("-c", "--cc", [&](auto v) { c = v; })
+				.option<bool>("-C", "--CC", desc, [&](auto v) { C = v; })
 				.option<bool>(args::required, "-d", [&](auto v) { d = v; })
+				.option<bool>(args::required, "-D", desc, [&](auto v) { D = v; })
 				.option<bool>(args::required, "-e", "--ee", [&](auto v) { e = v; })
-				.option<bool>(args::required, "-f", "--ff", [&](auto v) { f = v; });
+				.option<bool>(args::required, "-E", "--EE", desc, [&](auto v) { E = v; })
+				.option<bool>(args::required, "-f", "--ff", [&](auto v) { f = v; })
+				.option<bool>(args::required, "-F", "--FF", desc, [&](auto v) { F = v; });
 
 			p.parse(argc, argv);
 
@@ -1221,6 +1213,12 @@ int main() {
 			ctl::expect_equal(d, true);
 			ctl::expect_equal(e, true);
 			ctl::expect_equal(f, true);
+			ctl::expect_equal(A, true);
+			ctl::expect_equal(B, true);
+			ctl::expect_equal(C, true);
+			ctl::expect_equal(D, true);
+			ctl::expect_equal(E, true);
+			ctl::expect_equal(F, true);
 		});
 
 		it("args", []{
@@ -1228,24 +1226,33 @@ int main() {
 				"exec",
 				"true",
 				"true",
+				"true",
+				"true",
 				"true"
 			};
 			const int argc = std::distance(std::begin(argv), std::end(argv));
 
 			auto a = false;
 			auto b = false;
+			auto B = false;
 			auto c = false;
+			auto C = false;
+			auto desc = "Description"s;
 
 			auto p = args::parser{}
 				.arg(&a)
 				.arg("b", &b)
-				.arg(args::required, "c", &c);
+				.arg("B", desc, &B)
+				.arg(args::required, "c", &c)
+				.arg(args::required, "C", desc, &C);
 
 			p.parse(argc, argv);
 
 			ctl::expect_equal(a, true);
 			ctl::expect_equal(b, true);
+			ctl::expect_equal(B, true);
 			ctl::expect_equal(c, true);
+			ctl::expect_equal(C, true);
 		});
 
 		it("args handlers", []{
@@ -1253,24 +1260,33 @@ int main() {
 				"exec",
 				"true",
 				"true",
+				"true",
+				"true",
 				"true"
 			};
 			const int argc = std::distance(std::begin(argv), std::end(argv));
 
 			auto a = false;
 			auto b = false;
+			auto B = false;
 			auto c = false;
+			auto C = false;
+			auto desc = "Description"s;
 
 			auto p = args::parser{}
 				.arg<bool>([&](auto v) { a = v; })
 				.arg<bool>("b", [&](auto v) { b = v; })
-				.arg<bool>(args::required, "c", [&](auto v) { c = v; });
+				.arg<bool>("B", desc, [&](auto v) { B = v; })
+				.arg<bool>(args::required, "c", [&](auto v) { c = v; })
+				.arg<bool>(args::required, "C", desc, [&](auto v) { C = v; });
 
 			p.parse(argc, argv);
 
 			ctl::expect_equal(a, true);
 			ctl::expect_equal(b, true);
+			ctl::expect_equal(B, true);
 			ctl::expect_equal(c, true);
+			ctl::expect_equal(C, true);
 		});
 
 		it("rest", []{
@@ -1307,7 +1323,7 @@ int main() {
 			ctl::expect_equal(r, {0, 1});
 		});
 
-		it("named rest", []{
+		it("rest name", []{
 			const char* argv[] = {
 				"exec",
 				"0",
@@ -1324,7 +1340,25 @@ int main() {
 			ctl::expect_equal(r, {0, 1});
 		});
 
-		it("named rest handler", []{
+		it("rest name, description", []{
+			const char* argv[] = {
+				"exec",
+				"0",
+				"1"
+			};
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto desc = "Description"s;
+			auto r = std::vector<int>{};
+			auto p = args::parser{}
+				.rest("rest", desc, &r);
+
+			p.parse(argc, argv);
+
+			ctl::expect_equal(r, {0, 1});
+		});
+
+		it("rest name, handler", []{
 			const char* argv[] = {
 				"exec",
 				"0",
@@ -1341,7 +1375,25 @@ int main() {
 			ctl::expect_equal(r, {0, 1});
 		});
 
-		it("required named rest", []{
+		it("rest name, description, handler", []{
+			const char* argv[] = {
+				"exec",
+				"0",
+				"1"
+			};
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto desc = "Description"s;
+			auto r = std::vector<int>{};
+			auto p = args::parser{}
+				.rest<bool>("rest", desc, [&](auto v) { r.push_back(v); });
+
+			p.parse(argc, argv);
+
+			ctl::expect_equal(r, {0, 1});
+		});
+
+		it("rest required, name", []{
 			const char* argv[] = {
 				"exec",
 				"0",
@@ -1358,7 +1410,25 @@ int main() {
 			ctl::expect_equal(r, {0, 1});
 		});
 
-		it("required named rest handler", []{
+		it("rest required, name, description", []{
+			const char* argv[] = {
+				"exec",
+				"0",
+				"1"
+			};
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto desc = "Description"s;
+			auto r = std::vector<int>{};
+			auto p = args::parser{}
+				.rest(args::required, "rest", desc, &r);
+
+			p.parse(argc, argv);
+
+			ctl::expect_equal(r, {0, 1});
+		});
+
+		it("rest required, name, handler", []{
 			const char* argv[] = {
 				"exec",
 				"0",
@@ -1375,7 +1445,172 @@ int main() {
 			ctl::expect_equal(r, {0, 1});
 		});
 
-		it("command options", []{
+		it("rest required, name, handler, description", []{
+			const char* argv[] = {
+				"exec",
+				"0",
+				"1"
+			};
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto desc = "Description"s;
+			auto r = std::vector<int>{};
+			auto p = args::parser{}
+				.rest<bool>(args::required, "rest", desc, [&](auto v) { r.push_back(v); });
+
+			p.parse(argc, argv);
+
+			ctl::expect_equal(r, {0, 1});
+		});
+
+		it("command name, destination", []{
+			const char* argv[] = {
+				"./exec",
+				"l"
+			};
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto list_called = false;
+
+			auto p = args::parser{};
+			p.command("l", &list_called);
+
+			p.parse(argc, argv);
+
+			ctl::expect_ok(list_called);
+		});
+
+		it("command name, decription, destination", []{
+			const char* argv[] = {
+				"./exec",
+				"l"
+			};
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto desc = "Command description"s;
+			auto list_called = false;
+
+			auto p = args::parser{};
+			p.command("l", &list_called);
+
+			p.parse(argc, argv);
+
+			ctl::expect_ok(list_called);
+		});
+
+		it("command name, alias, destination", []{
+			const char* argv[] = {
+				"./exec",
+				"l"
+			};
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto list_called = false;
+
+			auto p = args::parser{};
+			p.command("l", "list", &list_called);
+
+			p.parse(argc, argv);
+
+			ctl::expect_ok(list_called);
+		});
+
+		it("command name, alias, description, destination", []{
+			const char* argv[] = {
+				"./exec",
+				"l"
+			};
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto desc = "Command description"s;
+			auto list_called = false;
+
+			auto p = args::parser{};
+			p.command("l", "list", desc, &list_called);
+
+			p.parse(argc, argv);
+
+			ctl::expect_ok(list_called);
+		});
+
+		it("command name + action", []{
+			const char* argv[] = {
+				"./exec",
+				"list"
+			};
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto list_called = false;
+
+			auto p = args::parser{};
+			p.command("list")
+				.action([&]{ list_called = true; });
+
+			p.parse(argc, argv);
+
+			ctl::expect_ok(list_called);
+		});
+
+		it("command name, description + action", []{
+			const char* argv[] = {
+				"./exec",
+				"list"
+			};
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto desc = "Command description"s;
+			auto list_called = false;
+
+			auto p = args::parser{};
+			p.command("list", desc)
+				.action([&]{ list_called = true; });
+
+			p.parse(argc, argv);
+
+			ctl::expect_ok(list_called);
+		});
+
+		it("command name, alias + action", []{
+			const char* argv[] = {
+				"./exec",
+				"list"
+			};
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto list_called = false;
+
+			auto p = args::parser{};
+			p.command("l", "list")
+				.action([&]{ list_called = true; });
+
+			p.parse(argc, argv);
+
+			ctl::expect_ok(list_called);
+		});
+
+		it("command name, alias, description + action", []{
+			const char* argv[] = {
+				"./exec",
+				"list"
+			};
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto desc = "Command description"s;
+			auto list_called = false;
+
+			auto p = args::parser{};
+			p.command("l", "list", desc)
+				.action([&]{ list_called = true; });
+
+			p.parse(argc, argv);
+
+			ctl::expect_ok(list_called);
+		});
+
+	});
+
+	describe("Command overloads", []{
+		it("options", []{
 			const char* argv[] = {
 				"exec",
 				"cmd",
@@ -1384,26 +1619,45 @@ int main() {
 				"--cc",
 				"-d",
 				"-e",
-				"--ff"
+				"--ff",
+				"-A",
+				"-B",
+				"--CC",
+				"-D",
+				"-E",
+				"--FF"
 			};
 			const int argc = std::distance(std::begin(argv), std::end(argv));
 
 			auto a = false;
+			auto A = false;
 			auto b = false;
+			auto B = false;
 			auto c = false;
+			auto C = false;
 			auto d = false;
+			auto D = false;
 			auto e = false;
+			auto E = false;
 			auto f = false;
+			auto F = false;
+			auto desc = "Description"s;
 
 			auto p = args::parser{};
 
 			p.command("cmd")
 				.option("-a", &a)
+				.option("-A", desc, &A)
 				.option("-b", "--bb", &b)
+				.option("-B", "--BB", desc, &B)
 				.option("-c", "--cc", &c)
+				.option("-C", "--CC", desc, &C)
 				.option(args::required, "-d", &d)
+				.option(args::required, "-D", desc, &D)
 				.option(args::required, "-e", "--ee", &e)
-				.option(args::required, "-f", "--ff", &f);
+				.option(args::required, "-E", "--EE", desc, &E)
+				.option(args::required, "-f", "--ff", &f)
+				.option(args::required, "-F", "--FF", desc, &F);
 
 			p.parse(argc, argv);
 
@@ -1413,9 +1667,15 @@ int main() {
 			ctl::expect_equal(d, true);
 			ctl::expect_equal(e, true);
 			ctl::expect_equal(f, true);
+			ctl::expect_equal(A, true);
+			ctl::expect_equal(B, true);
+			ctl::expect_equal(C, true);
+			ctl::expect_equal(D, true);
+			ctl::expect_equal(E, true);
+			ctl::expect_equal(F, true);
 		});
 
-		it("command options handlers", []{
+		it("options handlers", []{
 			const char* argv[] = {
 				"exec",
 				"cmd",
@@ -1424,26 +1684,45 @@ int main() {
 				"--cc",
 				"-d",
 				"-e",
-				"--ff"
+				"--ff",
+				"-A",
+				"-B",
+				"--CC",
+				"-D",
+				"-E",
+				"--FF"
 			};
 			const int argc = std::distance(std::begin(argv), std::end(argv));
 
 			auto a = false;
+			auto A = false;
 			auto b = false;
+			auto B = false;
 			auto c = false;
+			auto C = false;
 			auto d = false;
+			auto D = false;
 			auto e = false;
+			auto E = false;
 			auto f = false;
+			auto F = false;
+			auto desc = "Description"s;
 
 			auto p = args::parser{};
 
 			p.command("cmd")
 				.option<bool>("-a", [&](auto v) { a = v; })
+				.option<bool>("-A", desc, [&](auto v) { A = v; })
 				.option<bool>("-b", "--bb", [&](auto v) { b = v; })
+				.option<bool>("-B", "--BB", desc, [&](auto v) { B = v; })
 				.option<bool>("-c", "--cc", [&](auto v) { c = v; })
+				.option<bool>("-C", "--CC", desc, [&](auto v) { C = v; })
 				.option<bool>(args::required, "-d", [&](auto v) { d = v; })
+				.option<bool>(args::required, "-D", desc, [&](auto v) { D = v; })
 				.option<bool>(args::required, "-e", "--ee", [&](auto v) { e = v; })
-				.option<bool>(args::required, "-f", "--ff", [&](auto v) { f = v; });
+				.option<bool>(args::required, "-E", "--EE", desc, [&](auto v) { E = v; })
+				.option<bool>(args::required, "-f", "--ff", [&](auto v) { f = v; })
+				.option<bool>(args::required, "-F", "--FF", desc, [&](auto v) { F = v; });
 
 			p.parse(argc, argv);
 
@@ -1453,12 +1732,20 @@ int main() {
 			ctl::expect_equal(d, true);
 			ctl::expect_equal(e, true);
 			ctl::expect_equal(f, true);
+			ctl::expect_equal(A, true);
+			ctl::expect_equal(B, true);
+			ctl::expect_equal(C, true);
+			ctl::expect_equal(D, true);
+			ctl::expect_equal(E, true);
+			ctl::expect_equal(F, true);
 		});
 
-		it("command args", []{
+		it("args", []{
 			const char* argv[] = {
 				"exec",
 				"cmd",
+				"true",
+				"true",
 				"true",
 				"true",
 				"true"
@@ -1467,26 +1754,35 @@ int main() {
 
 			auto a = false;
 			auto b = false;
+			auto B = false;
 			auto c = false;
+			auto C = false;
+			auto desc = "Description"s;
 
 			auto p = args::parser{};
 
 			p.command("cmd")
 				.arg(&a)
 				.arg("b", &b)
-				.arg(args::required, "c", &c);
+				.arg("B", desc, &B)
+				.arg(args::required, "c", &c)
+				.arg(args::required, "C", desc, &C);
 
 			p.parse(argc, argv);
 
 			ctl::expect_equal(a, true);
 			ctl::expect_equal(b, true);
+			ctl::expect_equal(B, true);
 			ctl::expect_equal(c, true);
+			ctl::expect_equal(C, true);
 		});
 
-		it("command args handlers", []{
+		it("args handlers", []{
 			const char* argv[] = {
 				"exec",
 				"cmd",
+				"true",
+				"true",
 				"true",
 				"true",
 				"true"
@@ -1495,23 +1791,30 @@ int main() {
 
 			auto a = false;
 			auto b = false;
+			auto B = false;
 			auto c = false;
+			auto C = false;
+			auto desc = "Description"s;
 
 			auto p = args::parser{};
 
 			p.command("cmd")
 				.arg<bool>([&](auto v) { a = v; })
 				.arg<bool>("b", [&](auto v) { b = v; })
-				.arg<bool>(args::required, "c", [&](auto v) { c = v; });
+				.arg<bool>("B", desc, [&](auto v) { B = v; })
+				.arg<bool>(args::required, "c", [&](auto v) { c = v; })
+				.arg<bool>(args::required, "C", desc, [&](auto v) { C = v; });
 
 			p.parse(argc, argv);
 
 			ctl::expect_equal(a, true);
 			ctl::expect_equal(b, true);
+			ctl::expect_equal(B, true);
 			ctl::expect_equal(c, true);
+			ctl::expect_equal(C, true);
 		});
 
-		it("command rest", []{
+		it("rest", []{
 			const char* argv[] = {
 				"exec",
 				"cmd",
@@ -1531,7 +1834,7 @@ int main() {
 			ctl::expect_equal(r, {0, 1});
 		});
 
-		it("command rest handler", []{
+		it("rest handler", []{
 			const char* argv[] = {
 				"exec",
 				"cmd",
@@ -1551,7 +1854,7 @@ int main() {
 			ctl::expect_equal(r, {0, 1});
 		});
 
-		it("command named rest", []{
+		it("rest name", []{
 			const char* argv[] = {
 				"exec",
 				"cmd",
@@ -1571,7 +1874,28 @@ int main() {
 			ctl::expect_equal(r, {0, 1});
 		});
 
-		it("command named rest handler", []{
+		it("rest name, description", []{
+			const char* argv[] = {
+				"exec",
+				"cmd",
+				"0",
+				"1"
+			};
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto desc = "Description"s;
+			auto r = std::vector<int>{};
+			auto p = args::parser{};
+
+			p.command("cmd")
+				.rest("rest", desc, &r);
+
+			p.parse(argc, argv);
+
+			ctl::expect_equal(r, {0, 1});
+		});
+
+		it("rest name, handler", []{
 			const char* argv[] = {
 				"exec",
 				"cmd",
@@ -1591,7 +1915,28 @@ int main() {
 			ctl::expect_equal(r, {0, 1});
 		});
 
-		it("command required named rest", []{
+		it("rest name, description, handler", []{
+			const char* argv[] = {
+				"exec",
+				"cmd",
+				"0",
+				"1"
+			};
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto desc = "Description"s;
+			auto r = std::vector<int>{};
+			auto p = args::parser{};
+
+			p.command("cmd")
+				.rest<bool>("rest", desc, [&](auto v) { r.push_back(v); });
+
+			p.parse(argc, argv);
+
+			ctl::expect_equal(r, {0, 1});
+		});
+
+		it("rest required, name", []{
 			const char* argv[] = {
 				"exec",
 				"cmd",
@@ -1611,7 +1956,28 @@ int main() {
 			ctl::expect_equal(r, {0, 1});
 		});
 
-		it("command required named rest handler", []{
+		it("rest required, name, description", []{
+			const char* argv[] = {
+				"exec",
+				"cmd",
+				"0",
+				"1"
+			};
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto desc = "Description"s;
+			auto r = std::vector<int>{};
+			auto p = args::parser{};
+
+			p.command("cmd")
+				.rest(args::required, "rest", desc, &r);
+
+			p.parse(argc, argv);
+
+			ctl::expect_equal(r, {0, 1});
+		});
+
+		it("rest required, name, handler", []{
 			const char* argv[] = {
 				"exec",
 				"cmd",
@@ -1625,6 +1991,27 @@ int main() {
 
 			p.command("cmd")
 				.rest<bool>(args::required, "rest", [&](auto v) { r.push_back(v); });
+
+			p.parse(argc, argv);
+
+			ctl::expect_equal(r, {0, 1});
+		});
+
+		it("rest required, name, handler, description", []{
+			const char* argv[] = {
+				"exec",
+				"cmd",
+				"0",
+				"1"
+			};
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto desc = "Description"s;
+			auto r = std::vector<int>{};
+			auto p = args::parser{};
+
+			p.command("cmd")
+				.rest<bool>(args::required, "rest", desc, [&](auto v) { r.push_back(v); });
 
 			p.parse(argc, argv);
 

@@ -42,6 +42,10 @@ namespace {
 			|| value == "on" || value == "off";
 	}
 
+	bool is_single_word(std::string value) {
+		return value.find(' ') == std::string::npos;
+	}
+
 	template<typename T, typename = void>
 		struct is_stringstreamable: std::false_type {};
 
@@ -180,6 +184,7 @@ namespace args {
 		std::string short_name;
 		std::string long_name;
 		std::string non_conventional;
+		std::string description = ""s;
 		bool required = false;
 		bool is_flag = false;
 		std::function<void (const std::string&)> parse_fun;
@@ -187,38 +192,51 @@ namespace args {
 
 		option(const option&) = default;
 
-		option(std::string name, std::string short_name, std::string long_name,
+		option(std::string name, std::string short_name, std::string long_name_or_desc, std::string description,
 				bool required, bool is_flag, std::function<void (const std::string&)> parse_fun)
 			: short_name(is_short_option(name) ? name : short_name),
-			long_name(is_long_option(name) ? name : long_name),
 			non_conventional(is_non_conventional(name) ? name : ""),
 			required(required),
 			is_flag(is_flag),
-			parse_fun(parse_fun) {}
+			parse_fun(parse_fun) {
 
-		option(std::string name)
-			: option(name, "", "", false, false,
-				[](const std::string& value) {}) {}
+				if (is_long_option(name)) {
+					this->long_name = name;
+				} else if (is_long_option(long_name_or_desc)) {
+					this->long_name = long_name_or_desc;
+				}
+
+				if (!description.empty()) {
+					this->description = description;
+				} else if (!is_long_option(long_name_or_desc)) {
+					this->description = long_name_or_desc;
+				}
+			}
 
 		template<typename T>
 		option(std::string name, T* destination)
-			: option(name, "", "", false, std::is_same<T, bool>::value, create_parse_fun(destination)) {}
+			: option(name, "", "", "", false, std::is_same<T, bool>::value, create_parse_fun(destination)) {}
 
 		template<typename T>
 		option(required_t, std::string name, T* destination)
-			: option(name, "", "", true, std::is_same<T, bool>::value, create_parse_fun(destination)) {}
+			: option(name, "", "", "", true, std::is_same<T, bool>::value, create_parse_fun(destination)) {}
 
-		option(std::string short_name, std::string long_name)
-			: option("", short_name, long_name, false, false,
-				[](const std::string& value) {}) {}
 
 		template<typename T>
-		option(std::string short_name, std::string long_name, T* destination)
-			: option("", short_name, long_name, false, std::is_same<T, bool>::value, create_parse_fun(destination)) {}
+		option(std::string short_name, std::string long_name_or_desc, T* destination)
+			: option("", short_name, long_name_or_desc, "", false, std::is_same<T, bool>::value, create_parse_fun(destination)) {}
 
 		template<typename T>
-		option(required_t, std::string short_name, std::string long_name, T* destination)
-			: option("", short_name, long_name, true, std::is_same<T, bool>::value, create_parse_fun(destination)) {}
+		option(required_t, std::string short_name, std::string long_name_or_desc, T* destination)
+			: option("", short_name, long_name_or_desc, "", true, std::is_same<T, bool>::value, create_parse_fun(destination)) {}
+
+		template<typename T>
+		option(std::string short_name, std::string long_name, std::string description, T* destination)
+			: option("", short_name, long_name, description, false, std::is_same<T, bool>::value, create_parse_fun(destination)) {}
+
+		template<typename T>
+		option(required_t, std::string short_name, std::string long_name, std::string description, T* destination)
+			: option("", short_name, long_name, description, true, std::is_same<T, bool>::value, create_parse_fun(destination)) {}
 
 		void parse(std::string value) {
 			this->parse_fun(value);
@@ -230,7 +248,8 @@ namespace args {
 namespace {
 	struct arg_internal {
 		public:
-		std::string name;
+		std::string name = ""s;
+		std::string description = ""s;
 		bool required = false;
 		std::function<void (const std::string&)> parse_fun;
 		bool exists = false;
@@ -248,8 +267,21 @@ namespace {
 			parse_fun(parse) {}
 
 		template <typename T>
+		arg_internal(std::string name, std::string description, T parse)
+			: name(name),
+			description(description),
+			parse_fun(parse) {}
+
+		template <typename T>
 		arg_internal(args::required_t, std::string name, T parse)
 			: name(name),
+			required(true),
+			parse_fun(parse) {}
+
+		template <typename T>
+		arg_internal(args::required_t, std::string name, std::string description, T parse)
+			: name(name),
+			description(description),
 			required(true),
 			parse_fun(parse) {}
 
@@ -264,29 +296,51 @@ namespace {
 		std::vector<arg_internal> args = {};
 		arg_internal rest_args = {};
 		std::function<void ()> action_fun = 0;
-		const std::string name;
-		const std::string alias;
+		std::string name;
+		std::string alias = ""s;
+		std::string description = ""s;
 		bool* destination = nullptr;
 
 		command_internal(const command_internal&) = default;
 
 		command_internal(const std::string& name)
-			: name(name),
-			alias("") {}
+			: name(name) {}
 
 		command_internal(const std::string& name, bool* destination)
 			: name(name),
-			destination(destination),
-			alias("") {}
+			destination(destination) {}
 
-		command_internal(const std::string& name, const std::string& alias)
-			: name(name),
-			alias(alias) {}
+		command_internal(const std::string& name, const std::string& alias_or_desc)
+			: name(name) {
 
-		command_internal(const std::string& name, const std::string& alias, bool* destination)
+				if (is_single_word(alias_or_desc)) {
+					this->alias = alias_or_desc;
+				} else {
+					this->description = alias_or_desc;
+				}
+			}
+
+		command_internal(const std::string& name, const std::string& alias, const std::string& description)
 			: name(name),
-			destination(destination),
-			alias(alias) {}
+			alias(alias),
+			description(description) {}
+
+		command_internal(const std::string& name, const std::string& alias_or_desc, bool* destination)
+			: name(name),
+			destination(destination) {
+
+				if (is_single_word(alias_or_desc)) {
+					this->alias = alias_or_desc;
+				} else {
+					this->description = alias_or_desc;
+				}
+			}
+
+		command_internal(const std::string& name, const std::string& alias, const std::string& description, bool* destination)
+			: name(name),
+			alias(alias),
+			description(description),
+			destination(destination) {}
 
 		template<typename T>
 		command_internal& arg(T* destination) {
@@ -301,8 +355,20 @@ namespace {
 		}
 
 		template<typename T>
+		command_internal& arg(std::string name, std::string description, T* destination) {
+			this->args.emplace_back(name, description, create_parse_fun(destination));
+			return *this;
+		}
+
+		template<typename T>
 		command_internal& arg(args::required_t, std::string name, T* destination) {
 			this->args.emplace_back(args::required, name, create_parse_fun(destination));
+			return *this;
+		}
+
+		template<typename T>
+		command_internal& arg(args::required_t, std::string name, std::string description, T* destination) {
+			this->args.emplace_back(args::required, name, description, create_parse_fun(destination));
 			return *this;
 		}
 
@@ -319,8 +385,20 @@ namespace {
 		}
 
 		template<typename T, typename F>
+		command_internal& arg(std::string name, std::string description, F handler) {
+			this->args.emplace_back(name, description, create_parse_fun<T>(handler));
+			return *this;
+		}
+
+		template<typename T, typename F>
 		command_internal& arg(args::required_t, std::string name, F handler) {
 			this->args.emplace_back(args::required, name, create_parse_fun<T>(handler));
+			return *this;
+		}
+
+		template<typename T, typename F>
+		command_internal& arg(args::required_t, std::string name, std::string description, F handler) {
+			this->args.emplace_back(args::required, name, description, create_parse_fun<T>(handler));
 			return *this;
 		}
 
@@ -337,8 +415,20 @@ namespace {
 		}
 
 		template<typename T>
+		command_internal& rest(std::string name, std::string description, T* destination) {
+			this->rest_args = {name, description, create_parse_fun(destination)};
+			return *this;
+		}
+
+		template<typename T>
 		command_internal& rest(args::required_t, std::string name, T* destination) {
 			this->rest_args = {args::required, name, create_parse_fun(destination)};
+			return *this;
+		}
+
+		template<typename T>
+		command_internal& rest(args::required_t, std::string name, std::string description, T* destination) {
+			this->rest_args = {args::required, name, description, create_parse_fun(destination)};
 			return *this;
 		}
 
@@ -355,8 +445,20 @@ namespace {
 		}
 
 		template<typename T, typename F>
+		command_internal& rest(std::string name, std::string description, F handler) {
+			this->rest_args = {name, description, create_parse_fun<T>(handler)};
+			return *this;
+		}
+
+		template<typename T, typename F>
 		command_internal& rest(args::required_t, std::string name, F handler) {
 			this->rest_args = {args::required, name, create_parse_fun<T>(handler)};
+			return *this;
+		}
+
+		template<typename T, typename F>
+		command_internal& rest(args::required_t, std::string name, std::string description, F handler) {
+			this->rest_args = {args::required, name, description, create_parse_fun<T>(handler)};
 			return *this;
 		}
 
@@ -379,40 +481,66 @@ namespace {
 
 		template<typename T, typename F>
 		command_internal& option(std::string name, F handler) {
-			this->options.emplace_back(name, "", "",
+			this->options.emplace_back(name, "", "", "",
 					false, std::is_same<T, bool>::value, create_parse_fun<T>(handler));
 			return *this;
 		}
 
 		template<typename T, typename F>
 		command_internal& option(args::required_t, std::string name, F handler) {
-			this->options.emplace_back(name, "", "",
+			this->options.emplace_back(name, "", "", "",
 					true, std::is_same<T, bool>::value, create_parse_fun<T>(handler));
 			return *this;
 		}
 
 		template<typename T>
-		command_internal& option(std::string short_name, std::string long_name, T* destination) {
-			this->options.emplace_back(short_name, long_name, destination);
+		command_internal& option(std::string short_name, std::string long_name_or_desc, T* destination) {
+			this->options.emplace_back(short_name, long_name_or_desc, destination);
 			return *this;
 		}
 
 		template<typename T>
-		command_internal& option(args::required_t, std::string short_name, std::string long_name, T* destination) {
-			this->options.emplace_back(args::required, short_name, long_name, destination);
+		command_internal& option(std::string short_name, std::string long_name, std::string description, T* destination) {
+			this->options.emplace_back(short_name, long_name, description, destination);
+			return *this;
+		}
+
+		template<typename T>
+		command_internal& option(args::required_t, std::string short_name, std::string long_name_or_desc, T* destination) {
+			this->options.emplace_back(args::required, short_name, long_name_or_desc, destination);
+			return *this;
+		}
+
+		template<typename T>
+		command_internal& option(args::required_t, std::string short_name, std::string long_name, std::string description, T* destination) {
+			this->options.emplace_back(args::required, short_name, long_name, description, destination);
 			return *this;
 		}
 
 		template<typename T, typename F>
-		command_internal& option(std::string short_name, std::string long_name, F handler) {
-			this->options.emplace_back("", short_name, long_name,
+		command_internal& option(std::string short_name, std::string long_name_or_desc, F handler) {
+			this->options.emplace_back("", short_name, long_name_or_desc, "",
 					false, std::is_same<T, bool>::value, create_parse_fun<T>(handler));
 			return *this;
 		}
 
 		template<typename T, typename F>
-		command_internal& option(args::required_t, std::string short_name, std::string long_name, F handler) {
-			this->options.emplace_back("", short_name, long_name,
+		command_internal& option(std::string short_name, std::string long_name, std::string description, F handler) {
+			this->options.emplace_back("", short_name, long_name, description,
+					false, std::is_same<T, bool>::value, create_parse_fun<T>(handler));
+			return *this;
+		}
+
+		template<typename T, typename F>
+		command_internal& option(args::required_t, std::string short_name, std::string long_name_or_desc, F handler) {
+			this->options.emplace_back("", short_name, long_name_or_desc, "",
+					true, std::is_same<T, bool>::value, create_parse_fun<T>(handler));
+			return *this;
+		}
+
+		template<typename T, typename F>
+		command_internal& option(args::required_t, std::string short_name, std::string long_name, std::string description, F handler) {
+			this->options.emplace_back("", short_name, long_name, description,
 					true, std::is_same<T, bool>::value, create_parse_fun<T>(handler));
 			return *this;
 		}
@@ -503,7 +631,7 @@ namespace args {
 		const std::string value;
 
 		invalid_arg_value(std::string arg, std::string value, std::string value_what, std::string what = ""s)
-			: runtime_error(what.empty() ? "Invalid value for argument  \""s + arg + "\". " + value_what : what),
+			: runtime_error(what.empty() ? "Invalid value for argument \""s + arg + "\". " + value_what : what),
 			arg(arg),
 			value(value) {}
 	};
@@ -585,8 +713,20 @@ namespace args {
 		}
 
 		template<typename T>
-		parser& arg(required_t, std::string name, T* destination) {
-			this->args.emplace_back(required, name, create_parse_fun(destination));
+		parser& arg(std::string name, std::string description, T* destination) {
+			this->args.emplace_back(name, description, create_parse_fun(destination));
+			return *this;
+		}
+
+		template<typename T>
+		parser& arg(args::required_t, std::string name, T* destination) {
+			this->args.emplace_back(args::required, name, create_parse_fun(destination));
+			return *this;
+		}
+
+		template<typename T>
+		parser& arg(args::required_t, std::string name, std::string description, T* destination) {
+			this->args.emplace_back(args::required, name, description, create_parse_fun(destination));
 			return *this;
 		}
 
@@ -603,8 +743,20 @@ namespace args {
 		}
 
 		template<typename T, typename F>
-		parser& arg(required_t, std::string name, F handler) {
-			this->args.emplace_back(required, name, create_parse_fun<T>(handler));
+		parser& arg(std::string name, std::string description, F handler) {
+			this->args.emplace_back(name, description, create_parse_fun<T>(handler));
+			return *this;
+		}
+
+		template<typename T, typename F>
+		parser& arg(args::required_t, std::string name, F handler) {
+			this->args.emplace_back(args::required, name, create_parse_fun<T>(handler));
+			return *this;
+		}
+
+		template<typename T, typename F>
+		parser& arg(args::required_t, std::string name, std::string description, F handler) {
+			this->args.emplace_back(args::required, name, description, create_parse_fun<T>(handler));
 			return *this;
 		}
 
@@ -621,8 +773,20 @@ namespace args {
 		}
 
 		template<typename T>
-		parser& rest(required_t, std::string name, T* destination) {
-			this->rest_args = {required, name, create_parse_fun(destination)};
+		parser& rest(std::string name, std::string description, T* destination) {
+			this->rest_args = {name, description, create_parse_fun(destination)};
+			return *this;
+		}
+
+		template<typename T>
+		parser& rest(args::required_t, std::string name, T* destination) {
+			this->rest_args = {args::required, name, create_parse_fun(destination)};
+			return *this;
+		}
+
+		template<typename T>
+		parser& rest(args::required_t, std::string name, std::string description, T* destination) {
+			this->rest_args = {args::required, name, description, create_parse_fun(destination)};
 			return *this;
 		}
 
@@ -639,12 +803,24 @@ namespace args {
 		}
 
 		template<typename T, typename F>
-		parser& rest(required_t, std::string name, F handler) {
-			this->rest_args = {required, name, create_parse_fun<T>(handler)};
+		parser& rest(std::string name, std::string description, F handler) {
+			this->rest_args = {name, description, create_parse_fun<T>(handler)};
 			return *this;
 		}
 
-		parser& option(option option) {
+		template<typename T, typename F>
+		parser& rest(args::required_t, std::string name, F handler) {
+			this->rest_args = {args::required, name, create_parse_fun<T>(handler)};
+			return *this;
+		}
+
+		template<typename T, typename F>
+		parser& rest(args::required_t, std::string name, std::string description, F handler) {
+			this->rest_args = {args::required, name, description, create_parse_fun<T>(handler)};
+			return *this;
+		}
+
+		parser& option(args::option option) {
 			this->options.push_back(option);
 			return *this;
 		}
@@ -656,47 +832,73 @@ namespace args {
 		}
 
 		template<typename T>
-		parser& option(required_t, std::string name, T* destination) {
-			this->options.emplace_back(required, name, destination);
+		parser& option(args::required_t, std::string name, T* destination) {
+			this->options.emplace_back(args::required, name, destination);
 			return *this;
 		}
 
 		template<typename T, typename F>
 		parser& option(std::string name, F handler) {
-			this->options.emplace_back(name, "", "",
+			this->options.emplace_back(name, "", "", "",
 					false, std::is_same<T, bool>::value, create_parse_fun<T>(handler));
 			return *this;
 		}
 
 		template<typename T, typename F>
-		parser& option(required_t, std::string name, F handler) {
-			this->options.emplace_back(name, "", "",
+		parser& option(args::required_t, std::string name, F handler) {
+			this->options.emplace_back(name, "", "", "",
 					true, std::is_same<T, bool>::value, create_parse_fun<T>(handler));
 			return *this;
 		}
 
 		template<typename T>
-		parser& option(std::string short_name, std::string long_name, T* destination) {
-			this->options.emplace_back(short_name, long_name, destination);
+		parser& option(std::string short_name, std::string long_name_or_desc, T* destination) {
+			this->options.emplace_back(short_name, long_name_or_desc, destination);
 			return *this;
 		}
 
 		template<typename T>
-		parser& option(required_t, std::string short_name, std::string long_name, T* destination) {
-			this->options.emplace_back(required, short_name, long_name, destination);
+		parser& option(std::string short_name, std::string long_name, std::string description, T* destination) {
+			this->options.emplace_back(short_name, long_name, description, destination);
+			return *this;
+		}
+
+		template<typename T>
+		parser& option(args::required_t, std::string short_name, std::string long_name_or_desc, T* destination) {
+			this->options.emplace_back(args::required, short_name, long_name_or_desc, destination);
+			return *this;
+		}
+
+		template<typename T>
+		parser& option(args::required_t, std::string short_name, std::string long_name, std::string description, T* destination) {
+			this->options.emplace_back(args::required, short_name, long_name, description, destination);
 			return *this;
 		}
 
 		template<typename T, typename F>
-		parser& option(std::string short_name, std::string long_name, F handler) {
-			this->options.emplace_back("", short_name, long_name,
+		parser& option(std::string short_name, std::string long_name_or_desc, F handler) {
+			this->options.emplace_back("", short_name, long_name_or_desc, "",
 					false, std::is_same<T, bool>::value, create_parse_fun<T>(handler));
 			return *this;
 		}
 
 		template<typename T, typename F>
-		parser& option(required_t, std::string short_name, std::string long_name, F handler) {
-			this->options.emplace_back("", short_name, long_name,
+		parser& option(std::string short_name, std::string long_name, std::string description, F handler) {
+			this->options.emplace_back("", short_name, long_name, description,
+					false, std::is_same<T, bool>::value, create_parse_fun<T>(handler));
+			return *this;
+		}
+
+		template<typename T, typename F>
+		parser& option(args::required_t, std::string short_name, std::string long_name_or_desc, F handler) {
+			this->options.emplace_back("", short_name, long_name_or_desc, "",
+					true, std::is_same<T, bool>::value, create_parse_fun<T>(handler));
+			return *this;
+		}
+
+		template<typename T, typename F>
+		parser& option(args::required_t, std::string short_name, std::string long_name, std::string description, F handler) {
+			this->options.emplace_back("", short_name, long_name, description,
 					true, std::is_same<T, bool>::value, create_parse_fun<T>(handler));
 			return *this;
 		}
@@ -705,15 +907,23 @@ namespace args {
 			return this->commands.emplace_back(name);
 		}
 
-		command_internal& command(std::string name, std::string alias) {
-			return this->commands.emplace_back(name, alias);
+		command_internal& command(std::string name, std::string alias_or_desc) {
+			return this->commands.emplace_back(name, alias_or_desc);
+		}
+
+		command_internal& command(std::string name, std::string alias, std::string description) {
+			return this->commands.emplace_back(name, alias, description);
 		}
 
 		command_internal& command(std::string name, bool* destination) {
 			return this->commands.emplace_back(name, destination);
 		}
 
-		command_internal& command(std::string name, std::string alias, bool* destination) {
+		command_internal& command(std::string name, std::string alias_or_desc, bool* destination) {
+			return this->commands.emplace_back(name, alias_or_desc, destination);
+		}
+
+		command_internal& command(std::string name, std::string alias, std::string description, bool* destination) {
 			return this->commands.emplace_back(name, alias, destination);
 		}
 
