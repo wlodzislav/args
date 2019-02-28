@@ -857,11 +857,29 @@ namespace args {
 				}
 
 				if (!args_only && command_it == std::end(this->commands)) {
-					auto it = std::find_if(std::begin(this->commands), std::end(this->commands), [&](auto c) {
-						return c.name == *arg || c.alias == *arg;
+					auto prefix_it = std::find_if(std::begin(this->commands), std::end(this->commands), [&](auto c) {
+						return arg->starts_with(c.name) || arg->starts_with(c.alias);
 					});
-					if (it != std::end(this->commands)) {
-						command_it = it;
+					if (prefix_it != std::end(this->commands)) {
+						auto possible_command = *arg;
+						auto next = arg;
+						while (possible_command.size() <= prefix_it->name.size()
+								|| possible_command.size() <= prefix_it->alias.size()) {
+							if (prefix_it->name == possible_command || prefix_it->alias == possible_command) {
+								command_it = prefix_it;
+								arg = next;
+								break;
+							}
+							next = std::next(next);
+							if (next != std::end(args) && !next->starts_with("-")) {
+								possible_command += " "s + *next;
+							} else {
+								break;
+							}
+						}
+					}
+
+					if (command_it != std::end(this->commands)) {
 						if (command_it->destination) {
 							*command_it->destination = true;
 						}
