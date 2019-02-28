@@ -4,6 +4,7 @@
 #include <list>
 #include <set>
 #include <unordered_set>
+#include <utility>
 #include <map>
 #include <unordered_map>
 
@@ -65,6 +66,12 @@ std::ostream& operator<<(std::ostream &ss, const std::map<T, V>& v) {
 template<typename T, typename V>
 std::ostream& operator<<(std::ostream &ss, const std::unordered_map<T, V>& v) {
 	return print_map(ss, v);
+}
+
+template<typename T1, typename T2>
+std::ostream& operator<<(std::ostream &ss, const std::pair<T1, T2>& p) {
+	ss << "[" << p.first << ", " << p.second << "]";
+	return ss;
 }
 
 #include "./ctl.h"
@@ -929,6 +936,29 @@ int main() {
 			ctl::expect_equal(v, {0, 1, 2});
 		});
 
+		it("std::vector action", []{
+			const char* argv[] = {
+				"exec",
+				"-v",
+				"0",
+				"-v",
+				"1",
+				"-v",
+				"2"
+			};
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto vec = std::vector<int>{};
+
+			auto p = args::parser{}
+				.option<int>("-v", [&](auto v) { vec.push_back(v); });
+
+			p.parse(argc, argv);
+
+			ctl::expect_equal(vec, {0, 1, 2});
+		});
+
+
 		it("std::list", []{
 			const char* argv[] = {
 				"exec",
@@ -995,6 +1025,23 @@ int main() {
 			ctl::expect_equal(v, {0, 1, 2});
 		});
 
+		it("std::pair", []{
+			const char* argv[] = {
+				"exec",
+				"-p",
+				"a=0"
+			};
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto p = std::pair<std::string, int>{"", 0};
+			args::options options = {
+				{"-p", &p}
+			};
+
+			args::parse(argc, argv, options);
+
+			ctl::expect_equal(p, {"a", 0});
+		});
 		it("std::map", []{
 			const char* argv[] = {
 				"exec",
@@ -1013,6 +1060,29 @@ int main() {
 			args::parse(argc, argv, options);
 
 			ctl::expect_equal(v, {
+				{"a", "A"},
+				{"b", "B"},
+			});
+		});
+
+		it("std::map action", []{
+			const char* argv[] = {
+				"exec",
+				"-v",
+				"a=A",
+				"-v",
+				"b=B"
+			};
+			const int argc = std::distance(std::begin(argv), std::end(argv));
+
+			auto m = std::map<std::string, std::string>{};
+
+			auto p = args::parser{}
+				.option<std::pair<std::string, std::string>>("-v", [&](auto v) { m.insert(v); });
+
+			p.parse(argc, argv);
+
+			ctl::expect_equal(m, {
 				{"a", "A"},
 				{"b", "B"},
 			});

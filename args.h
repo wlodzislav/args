@@ -126,6 +126,37 @@ namespace {
 		(*destination)[k] = v;
 	}
 
+	template<typename T>
+	std::enable_if_t<!is_stringstreamable<T>::value
+		&& is_stringstreamable<typename T::first_type>::value
+		&& is_stringstreamable<typename T::second_type>::value
+	>
+	parse_value(std::string value, T* destination) {
+		auto eq_pos = value.find('=');
+		if (eq_pos == std::string::npos) {
+			throw std::runtime_error("Value \""s + value
+					+ "\" is not key=value pair.");
+		}
+
+		auto k_str = value.substr(0, eq_pos);
+		typename T::first_type k;
+		auto k_stream = std::stringstream{k_str};
+		k_stream >> k;
+		if (k_stream.fail()) {
+			throw std::runtime_error("Can't parse key in pair \""s + value + "\"."s);
+		}
+
+		auto v_str = value.substr(eq_pos + 1);
+		typename T::second_type v;
+		auto v_stream = std::stringstream{v_str};
+		v_stream >> v;
+		if (v_stream.fail()) {
+			throw std::runtime_error("Can't parse value in pair \""s + value + "\"."s);
+		}
+
+		*destination = {k, v};
+	}
+
 	template <typename T>
 	std::function<void (const std::string&)> create_parse_fun(T* destination) {
 		return [=](const std::string& value) { parse_value(value, destination); };
