@@ -258,37 +258,37 @@ namespace {
 			alias(alias) {}
 
 		template<typename T>
-		command_internal& positional(T* destination) {
+		command_internal& arg(T* destination) {
 			this->args.emplace_back(create_parse_fun(destination));
 			return *this;
 		}
 
 		template<typename T>
-		command_internal& positional(std::string name, T* destination) {
+		command_internal& arg(std::string name, T* destination) {
 			this->args.emplace_back(name, create_parse_fun(destination));
 			return *this;
 		}
 
 		template<typename T>
-		command_internal& positional(args::required_t, std::string name, T* destination) {
+		command_internal& arg(args::required_t, std::string name, T* destination) {
 			this->args.emplace_back(args::required, name, create_parse_fun(destination));
 			return *this;
 		}
 
 		template<typename T, typename F>
-		command_internal& positional(F handler) {
+		command_internal& arg(F handler) {
 			this->args.emplace_back(create_parse_fun<T>(handler));
 			return *this;
 		}
 
 		template<typename T, typename F>
-		command_internal& positional(std::string name, F handler) {
+		command_internal& arg(std::string name, F handler) {
 			this->args.emplace_back(name, create_parse_fun<T>(handler));
 			return *this;
 		}
 
 		template<typename T, typename F>
-		command_internal& positional(args::required_t, std::string name, F handler) {
+		command_internal& arg(args::required_t, std::string name, F handler) {
 			this->args.emplace_back(args::required, name, create_parse_fun<T>(handler));
 			return *this;
 		}
@@ -512,37 +512,37 @@ namespace args {
 		public:
 
 		template<typename T>
-		parser& positional(T* destination) {
+		parser& arg(T* destination) {
 			this->args.emplace_back(create_parse_fun(destination));
 			return *this;
 		}
 
 		template<typename T>
-		parser& positional(std::string name, T* destination) {
+		parser& arg(std::string name, T* destination) {
 			this->args.emplace_back(name, create_parse_fun(destination));
 			return *this;
 		}
 
 		template<typename T>
-		parser& positional(required_t, std::string name, T* destination) {
+		parser& arg(required_t, std::string name, T* destination) {
 			this->args.emplace_back(required, name, create_parse_fun(destination));
 			return *this;
 		}
 
 		template<typename T, typename F>
-		parser& positional(F handler) {
+		parser& arg(F handler) {
 			this->args.emplace_back(create_parse_fun<T>(handler));
 			return *this;
 		}
 
 		template<typename T, typename F>
-		parser& positional(std::string name, F handler) {
+		parser& arg(std::string name, F handler) {
 			this->args.emplace_back(name, create_parse_fun<T>(handler));
 			return *this;
 		}
 
 		template<typename T, typename F>
-		parser& positional(required_t, std::string name, F handler) {
+		parser& arg(required_t, std::string name, F handler) {
 			this->args.emplace_back(required, name, create_parse_fun<T>(handler));
 			return *this;
 		}
@@ -679,8 +679,8 @@ namespace args {
 			};
 
 			auto args_only = false;
-			auto positional_index = 0;
-			auto command_positional_index = 0;
+			auto arg_index = 0;
+			auto command_arg_index = 0;
 			for (auto arg = std::begin(args); arg != std::end(args); arg++) {
 				if (*arg == "--"s) {
 					args_only = true;
@@ -823,22 +823,22 @@ namespace args {
 				}
 
 				if (command_it != std::end(this->commands)) {
-					if (command_it->args.size() > command_positional_index) {
-						command_it->args[command_positional_index].parse(*arg);
-						command_positional_index++;
+					if (command_it->args.size() > command_arg_index) {
+						command_it->args[command_arg_index].parse(*arg);
+						command_arg_index++;
 					} else if (command_it->rest_args.parse_fun) {
 						command_it->rest_args.parse(*arg);
 					} else {
-						if (this->args.size() > positional_index) {
-							this->args[positional_index].parse(*arg);
-							positional_index++;
+						if (this->args.size() > arg_index) {
+							this->args[arg_index].parse(*arg);
+							arg_index++;
 						} else if (this->rest_args.parse_fun) {
 							this->rest_args.parse(*arg);
 						}
 					}
-				} else if (this->args.size() > positional_index) {
-					this->args[positional_index].parse(*arg);
-					positional_index++;
+				} else if (this->args.size() > arg_index) {
+					this->args[arg_index].parse(*arg);
+					arg_index++;
 				} else if (this->rest_args.parse_fun) {
 					this->rest_args.parse(*arg);
 				} else {

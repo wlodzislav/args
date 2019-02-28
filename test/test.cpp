@@ -258,7 +258,7 @@ int main() {
 	});
 
 	describe("Global Args", []{
-		it("positional", []{
+		it("arg", []{
 			const char* argv[] = {
 				"./exec",
 				"arg1",
@@ -272,8 +272,8 @@ int main() {
 			auto arg2 = 0.0;
 
 			auto p = args::parser{}
-				.positional(&arg1)
-				.positional(&arg2)
+				.arg(&arg1)
+				.arg(&arg2)
 				.option("--long", &s);
 
 			p.parse(argc, argv);
@@ -283,7 +283,7 @@ int main() {
 			ctl::expect_equal(arg2, 123.123);
 		});
 
-		it("positional, rest", []{
+		it("arg, rest", []{
 			const char* argv[] = {
 				"./exec",
 				"arg1",
@@ -301,8 +301,8 @@ int main() {
 			auto rest = std::vector<std::string>{};
 
 			auto p = args::parser{}
-				.positional(&arg1)
-				.positional(&arg2)
+				.arg(&arg1)
+				.arg(&arg2)
 				.rest(&rest)
 				.option("--long", &s);
 
@@ -333,8 +333,8 @@ int main() {
 			auto rest = std::vector<std::string>{};
 
 			auto p = args::parser{}
-				.positional(&arg1)
-				.positional(&arg2)
+				.arg(&arg1)
+				.arg(&arg2)
 				.rest(&rest)
 				.option("--long", &s);
 
@@ -462,8 +462,8 @@ int main() {
 
 			auto p = args::parser{};
 			p.command("list")
-				.positional(&arg1)
-				.positional(&arg2)
+				.arg(&arg1)
+				.arg(&arg2)
 				.rest(&rest)
 				.action([&]{ list_called = true; });
 
@@ -493,12 +493,12 @@ int main() {
 			auto list_called = false;
 
 			auto p = args::parser{}
-				.positional(&garg1)
+				.arg(&garg1)
 				.rest(&grest);
 
 			p.command("list")
-				.positional(&arg1)
-				.positional(&arg2)
+				.arg(&arg1)
+				.arg(&arg2)
 				.action([&]{ list_called = true; });
 
 			p.parse(argc, argv);
@@ -626,8 +626,8 @@ int main() {
 			auto rest = std::vector<std::string>{};
 
 			auto p = args::parser{}
-				.positional(args::required, "arg1", &arg1)
-				.positional(args::required, "arg2", &arg2)
+				.arg(args::required, "arg1", &arg1)
+				.arg(args::required, "arg2", &arg2)
 				.rest(args::required, "rest", &rest);
 
 			auto catched = false;
@@ -652,8 +652,8 @@ int main() {
 			auto rest = std::vector<std::string>{};
 
 			auto p = args::parser{}
-				.positional(args::required, "arg1", &arg1)
-				.positional(args::required, "arg2", &arg2)
+				.arg(args::required, "arg1", &arg1)
+				.arg(args::required, "arg2", &arg2)
 				.rest(args::required, "rest", &rest);
 
 			auto catched = false;
@@ -752,8 +752,8 @@ int main() {
 
 			auto p = args::parser{};
 			p.command("cmd")
-				.positional(args::required, "arg1", &arg1)
-				.positional(args::required, "arg2", &arg2)
+				.arg(args::required, "arg1", &arg1)
+				.arg(args::required, "arg2", &arg2)
 				.rest(args::required, "rest", &rest);
 
 			auto catched = false;
@@ -780,8 +780,8 @@ int main() {
 
 			auto p = args::parser{};
 			p.command("cmd")
-				.positional(args::required, "arg1", &arg1)
-				.positional(args::required, "arg2", &arg2)
+				.arg(args::required, "arg1", &arg1)
+				.arg(args::required, "arg2", &arg2)
 				.rest(args::required, "rest", &rest);
 
 			auto catched = false;
@@ -1167,9 +1167,9 @@ int main() {
 			auto c = false;
 
 			auto p = args::parser{}
-				.positional(&a)
-				.positional("b", &b)
-				.positional(args::required, "c", &c);
+				.arg(&a)
+				.arg("b", &b)
+				.arg(args::required, "c", &c);
 
 			p.parse(argc, argv);
 
@@ -1192,9 +1192,9 @@ int main() {
 			auto c = false;
 
 			auto p = args::parser{}
-				.positional<bool>([&](auto v) { a = v; })
-				.positional<bool>("b", [&](auto v) { b = v; })
-				.positional<bool>(args::required, "c", [&](auto v) { c = v; });
+				.arg<bool>([&](auto v) { a = v; })
+				.arg<bool>("b", [&](auto v) { b = v; })
+				.arg<bool>(args::required, "c", [&](auto v) { c = v; });
 
 			p.parse(argc, argv);
 
@@ -1402,9 +1402,9 @@ int main() {
 			auto p = args::parser{};
 
 			p.command("cmd")
-				.positional(&a)
-				.positional("b", &b)
-				.positional(args::required, "c", &c);
+				.arg(&a)
+				.arg("b", &b)
+				.arg(args::required, "c", &c);
 
 			p.parse(argc, argv);
 
@@ -1430,9 +1430,9 @@ int main() {
 			auto p = args::parser{};
 
 			p.command("cmd")
-				.positional<bool>([&](auto v) { a = v; })
-				.positional<bool>("b", [&](auto v) { b = v; })
-				.positional<bool>(args::required, "c", [&](auto v) { c = v; });
+				.arg<bool>([&](auto v) { a = v; })
+				.arg<bool>("b", [&](auto v) { b = v; })
+				.arg<bool>(args::required, "c", [&](auto v) { c = v; });
 
 			p.parse(argc, argv);
 
