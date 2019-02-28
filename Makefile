@@ -6,6 +6,10 @@ EXAMPLES = $(patsubst %.cpp, %, $(wildcard examples/*.cpp))
 examples: $(EXAMPLES)
 	./examples/short-syntax -b -i12 -d1.5 --str str -v 0 -v 1 -v 2 -m a=A -m b=B
 	@echo
+	./examples/chain-syntax -b -i12 -d1.5 --str str -v 0 -v 1 -v 2 -m a=A -m b=B
+	@echo
+	./examples/containers-action -v 0 -v 1 -v 2 -m a=A -m b=B
+	@echo
 	./examples/errors --num asd
 	@echo
 	./examples/errors --bool=asd
