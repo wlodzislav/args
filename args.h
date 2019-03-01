@@ -1,5 +1,5 @@
 /*
-	Modern C++ Command Line Argumets Library
+	Modern C++ Command Line Arguments Library
 
 	Copyright (c) 2019 Vladislav Kaminsky(wlodzislav@outlook.com)
 
