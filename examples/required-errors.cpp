@@ -29,17 +29,21 @@ int main(int argc, const char** argv) {
 
 	try {
 		p.parse(argc, argv);
+
 	} catch (const args::missing_command_option& err) {
 		std::cout << err.what() << std::endl;
 		std::cout << ".command=\"" << err.command << "\"" << std::endl;
 		std::cout << ".option=\"" << err.option << "\"" << std::endl;
+
 	} catch (const args::missing_option& err) {
 		std::cout << err.what() << std::endl;
 		std::cout << ".option=\"" << err.option << "\"" << std::endl;
+
 	} catch (const args::missing_command_arg& err) {
 		std::cout << err.what() << std::endl;
 		std::cout << ".command=\"" << err.command << "\"" << std::endl;
 		std::cout << ".arg=\"" << err.arg << "\"" << std::endl;
+
 	} catch (const args::missing_arg& err) {
 		std::cout << err.what() << std::endl;
 		std::cout << ".arg=\"" << err.arg << "\"" << std::endl;

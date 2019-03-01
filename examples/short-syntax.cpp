@@ -52,7 +52,7 @@ int main(int argc, const char** argv) {
 		{"-b", &b},
 		{"-i", &i},
 		{"-d", &d},
-		{"-s", "--str", &str},
+		{args::required, "-s", "--str", &str},
 		{"-v", &v},
 		{"-m", &m}
 	};

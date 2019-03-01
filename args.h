@@ -635,9 +635,9 @@ namespace {
 		if (rest_args.parse_fun) {
 			auto arg_name = rest_args.name.empty() ? "REST" : rest_args.name;
 			if (rest_args.required) {
-				ss << " <" << arg_name << ">";
+				ss << " <" << arg_name << "...>";
 			} else {
-				ss << " [<" << arg_name << ">]";
+				ss << " [<" << arg_name << "...>]";
 			}
 		}
 		return ss.str();
@@ -781,28 +781,10 @@ namespace args {
 			value(value) {}
 	};
 
-	class missing_arg : public std::runtime_error {
-		public:
-		const std::string arg;
-
-		missing_arg(const std::string& arg, const std::string& what = ""s)
-			: runtime_error(what.empty() ? "Argument \""s + arg + "\" is required." : what),
-			arg(arg) {}
-	};
-
 	class missing_command : public std::runtime_error {
 		public:
 		missing_command()
 			: runtime_error("Command is required.") {}
-	};
-
-	class missing_command_arg : public missing_arg {
-		public:
-		const std::string command;
-
-		missing_command_arg(const std::string& command, const std::string& arg)
-			: missing_arg(arg, "Command \""s + command + "\" argument \""s + arg + "\" is required."),
-			command(command) {}
 	};
 
 	class missing_option : public std::runtime_error {
@@ -820,6 +802,24 @@ namespace args {
 
 		missing_command_option(const std::string& command, const std::string& option)
 			: missing_option(option, "Command \""s + command + "\" option \""s + option + "\" is required."),
+			command(command) {}
+	};
+
+	class missing_arg : public std::runtime_error {
+		public:
+		const std::string arg;
+
+		missing_arg(const std::string& arg, const std::string& what = ""s)
+			: runtime_error(what.empty() ? "Argument \""s + arg + "\" is required." : what),
+			arg(arg) {}
+	};
+
+	class missing_command_arg : public missing_arg {
+		public:
+		const std::string command;
+
+		missing_command_arg(const std::string& command, const std::string& arg)
+			: missing_arg(arg, "Command \""s + command + "\" argument \""s + arg + "\" is required."),
 			command(command) {}
 	};
 
@@ -1555,7 +1555,7 @@ namespace args {
 		}
 	};
 
-	void parse(int argc, const char** argv, const std::vector<args::option>& options) {
+	void parse(int argc, const char** argv, const args::options& options) {
 		auto p = parser{};
 		for (auto& option : options) {
 			p.option(option);

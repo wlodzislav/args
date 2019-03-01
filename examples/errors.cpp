@@ -35,30 +35,37 @@ int main(int argc, const char** argv) {
 
 	try {
 		p.parse(argc, argv);
+
 	} catch (const args::invalid_option& err) {
 		std::cout << err.what() << std::endl;
 		std::cout << ".option=\"" << err.option << "\"" << std::endl;
+
 	} catch (const args::invalid_command_option_value& err) {
 		std::cout << err.what() << std::endl;
 		std::cout << ".command=\"" << err.command << "\"" << std::endl;
 		std::cout << ".option=\"" << err.option << "\"" << std::endl;
 		std::cout << ".value=\"" << err.value << "\"" << std::endl;
+
 	} catch (const args::invalid_option_value& err) {
 		std::cout << err.what() << std::endl;
 		std::cout << ".option=\"" << err.option << "\"" << std::endl;
 		std::cout << ".value=\"" << err.value << "\"" << std::endl;
+
 	} catch (const args::invalid_command_arg_value& err) {
 		std::cout << err.what() << std::endl;
 		std::cout << ".command=\"" << err.command << "\"" << std::endl;
 		std::cout << ".arg=\"" << err.arg << "\"" << std::endl;
 		std::cout << ".value=\"" << err.value << "\"" << std::endl;
+
 	} catch (const args::invalid_arg_value& err) {
 		std::cout << err.what() << std::endl;
 		std::cout << ".arg=\"" << err.arg << "\"" << std::endl;
 		std::cout << ".value=\"" << err.value << "\"" << std::endl;
+
 	} catch (const args::unexpected_arg& err) {
 		std::cout << err.what() << std::endl;
 		std::cout << ".value=\"" << err.value << "\"" << std::endl;
+
 	} catch (const std::runtime_error& err) {
 		// base class for all parser errors
 	}

@@ -6,7 +6,7 @@ EXAMPLES = $(patsubst %.cpp, %, $(wildcard examples/*.cpp))
 examples: $(EXAMPLES)
 	./examples/short-syntax -b -i12 -d1.5 --str str -v 0 -v 1 -v 2 -m a=A -m b=B
 	@echo
-	./examples/chain-syntax -b -i12 -d1.5 --str str -v 0 -v 1 -v 2 -m a=A -m b=B
+	./examples/chain-syntax cmd -b -i12 -d1.5 --str str -v 0 -v 1 -v 2 -m a=A -m b=B -e value
 	@echo
 	./examples/containers-action -v 0 -v 1 -v 2 -m a=A -m b=B
 	@echo
@@ -68,17 +68,17 @@ examples: $(EXAMPLES)
 	@echo
 	./examples/command-required-error
 
-.PHONY: test-help
-test-help: test/help test/help-required-command test/help-custom
-	./test/help --help
+.PHONY: examples-help
+examples-help: examples/help examples/required-command-help examples/custom-help
+	./examples/help --help
 	@echo
-	./test/help-required-command --help
+	./examples/required-command-help --help
 	@echo
-	./test/help-required-command list --help
+	./examples/required-command-help list --help
 	@echo
-	./test/help-required-command get --help
+	./examples/required-command-help get --help
 	@echo
-	./test/help-custom --help
+	./examples/custom-help --help
 
 .PHONY: test
 test: test/test

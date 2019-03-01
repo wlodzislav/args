@@ -44,7 +44,7 @@ int main(int argc, const char** argv) {
 	auto b = false;
 	auto i = 0;
 	auto d = 0.0;
-	std::string str = ""s;
+	auto str = ""s;
 	auto v = std::vector<int>{};
 	auto m = std::map<std::string, std::string>{};
 
@@ -55,6 +55,16 @@ int main(int argc, const char** argv) {
 		.option("-s", "--str", &str)
 		.option(args::required, "-v", "--vector", &v)
 		.option("-m", "--map", &m);
+	
+	auto cmd_called = false;
+	auto cmd_b = false;
+	auto e = ""s;
+	p.command("cmd", "c")
+		.option("-b", &cmd_b)
+		.option("-e", &e)
+		.action([&]() {
+			cmd_called = true;
+		});
 
 	p.parse(argc, argv);
 
@@ -65,4 +75,7 @@ int main(int argc, const char** argv) {
 	std::cout << "str=" << str << std::endl;
 	std::cout << "v=" << v << std::endl;
 	std::cout << "m=" << m << std::endl;
+	std::cout << "cmd_b=" << cmd_b << std::endl;
+	std::cout << "e=" << e << std::endl;
+	std::cout << "cmd_called=" << cmd_called << std::endl;
 }
